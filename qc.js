@@ -1,9 +1,10 @@
-import { brackets, createSubfillSchedule } from './simulation.js';
+import { getBrackets, createSubfillSchedule } from './simulation.js';
 import { getSubfillWeights } from './subfill-distributions.js';
 
-export function distributionFor(original, fill, patientType = 'new') {
+export function distributionFor(original, fill, patientType = 'new', productId = original.productId ?? 'ubrelvy') {
+  const brackets = getBrackets(productId);
   if (!Number.isInteger(fill) || fill < 1 || fill > 12) throw new RangeError('Invalid QC cohort or fill.');
-  const subfillWeights = getSubfillWeights(patientType);
+  const subfillWeights = getSubfillWeights(patientType, productId);
   if (!subfillWeights[original.id]) throw new RangeError('Invalid QC cohort or fill.');
   const weights = subfillWeights[original.id];
   const total = Object.values(weights).reduce((sum, row) => sum + row[fill - 1], 0);
@@ -16,14 +17,15 @@ export function distributionFor(original, fill, patientType = 'new') {
   });
 }
 
-export function runDistributionQc(original, sampleCount = 10000, patientType = 'new') {
+export function runDistributionQc(original, sampleCount = 10000, patientType = 'new', productId = original.productId ?? 'ubrelvy') {
+  const brackets = getBrackets(productId);
   if (!Number.isSafeInteger(sampleCount) || sampleCount < 1) throw new RangeError('QC sample count must be positive.');
   const counts = Array.from({ length: 12 }, () => Object.fromEntries(brackets.map(bracket => [bracket.id, 0])));
   let increasingPaths = 0;
   const groupedPaths = new Map();
   for (let index = 0; index < sampleCount; index++) {
     const percentile = (index + 0.5) / sampleCount;
-    const schedule = createSubfillSchedule(original, () => percentile, patientType);
+    const schedule = createSubfillSchedule(original, () => percentile, patientType, productId);
     let increased = false;
     schedule.forEach((fill, month) => {
       counts[month][fill.preVoucherBracket.id]++;
@@ -41,9 +43,9 @@ export function runDistributionQc(original, sampleCount = 10000, patientType = '
   }
   let maxDifferencePp = 0;
   for (let fill = 1; fill <= 12; fill++) {
-    for (const row of distributionFor(original, fill, patientType)) {
+    for (const row of distributionFor(original, fill, patientType, productId)) {
       maxDifferencePp = Math.max(maxDifferencePp, Math.abs(counts[fill - 1][row.bracket.id] / sampleCount - row.probability) * 100);
     }
   }
-  return { patientType, sampleCount, counts, increasingPaths, maxDifferencePp, paths: [...groupedPaths.values()].sort((a, b) => b.count - a.count) };
+  return { productId, patientType, sampleCount, counts, increasingPaths, maxDifferencePp, paths: [...groupedPaths.values()].sort((a, b) => b.count - a.count) };
 }

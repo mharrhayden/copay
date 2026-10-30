@@ -1,4 +1,5 @@
-import { brackets } from './simulation.js';
+import { getBrackets } from './cohorts.js';
+import { selectedProductId, onProductChange, beginRun } from './product-ui.js';
 import { simulatePatientBatch } from './batch.js';
 import { buildPatientQc, buildMostPopulatedCohortMatrix } from './patient-qc.js';
 import { DEFAULT_PRODUCT_ID, getProduct } from './products.js';
@@ -32,7 +33,7 @@ function appendRow(body, label, data, difference = false) {
     const value = data ? difference ? data.differences[key] : data.actual[key] : null;
     cell.textContent = difference && value != null ? `${value > 0 ? '+' : ''}${value.toFixed(2)}%` : difference ? '—' : formatValue(value, key);
     if (difference && data) {
-      cell.title = `Simulated: ${formatValue(data.actual[key], key)}; benchmark: ${formatValue(data.benchmark[key], key)}${key === 'scriptsPerPatient' && data.actual[key] != null ? `; unrounded simulated ratio: ${data.actual[key].toFixed(6)}` : ''}`;
+      cell.title = `Simulated: ${formatValue(data.actual[key], key)}; benchmark: ${formatValue(data.benchmark?.[key], key)}${key === 'scriptsPerPatient' && data.actual[key] != null ? `; unrounded simulated ratio: ${data.actual[key].toFixed(6)}` : ''}`;
       if (value != null) cell.dataset.direction = value > 0 ? 'above' : value < 0 ? 'below' : 'equal';
     }
     row.append(cell);
@@ -40,9 +41,11 @@ function appendRow(body, label, data, difference = false) {
   body.append(row);
 }
 function renderTables(run = null) {
+  const productId = run?.productId ?? selectedProductId();
   const data = run ? buildPatientQc(run) : null;
+  get('patient-qc-benchmark-note').textContent = productId === 'ubrelvy' ? 'Ubrelvy reference: 10,000 attempting patients, 9,023 filling patients, and 20,305 scripts. The reference stays fixed for New and Continuing.' : 'Qulipta reference benchmarks have not been supplied. Simulated results and the monthly matrix are available; reference differences are shown as a dash.';
   for (const id of ['patient-qc-actual', 'patient-qc-difference', 'patient-qc-actual-total', 'patient-qc-difference-total']) get(id).replaceChildren();
-  brackets.forEach((bracket, index) => {
+  getBrackets(productId).forEach((bracket, index) => {
     const label = `${bracket.id}. ${bracket.label}`;
     appendRow(get('patient-qc-actual'), label, data?.rows[index]);
     appendRow(get('patient-qc-difference'), label, data?.rows[index], true);
@@ -65,7 +68,7 @@ function matrixRow(body, values, startMonth = null, intensityMax = 0) {
     if (calendarCell && startMonth !== null && !unavailable) {
       const fills = Number(String(value).replaceAll(',', ''));
       cell.title = `${fills.toLocaleString('en-US')} completed scripts in ${monthNames[calendarIndex]} from ${monthNames[startMonth - 1]} starters`;
-      if (fills > 0 && intensityMax > 0) cell.style.backgroundColor = `rgba(63, 128, 84, ${0.08 + 0.3 * fills / intensityMax})`;
+      if (fills > 0 && intensityMax > 0) cell.style.backgroundColor = `hsl(var(--theme-hue) 30% 40% / ${0.08 + 0.3 * fills / intensityMax})`;
     }
     row.append(cell);
   });
@@ -98,8 +101,8 @@ function renderMonthMatrix(run) {
 }
 get('run-patient-qc').addEventListener('click', async () => {
   const settings = currentSettings();
-  const button = get('run-patient-qc'); const status = get('patient-qc-status');
-  button.disabled = true;
+  const status = get('patient-qc-status');
+  const finishRun = beginRun();
   try {
     const run = await simulatePatientBatch({ ...settings, patientCount: 10000,
       onProgress: completed => { status.textContent = `${completed.toLocaleString('en-US')} of 10,000 QC patients simulated…`; },
@@ -110,9 +113,17 @@ get('run-patient-qc').addEventListener('click', async () => {
   } catch (error) {
     status.textContent = 'QC could not complete. Previous QC results are retained; please retry.';
     console.error(error);
-  } finally { button.disabled = false; }
+  } finally { finishRun(); }
 });
 onPatientVolumeChange(renderContext);
 onEligibilityChange(renderContext);
-get('product').addEventListener('change', renderContext);
+const runSnapshots = new Map();
+let displayedProductId = selectedProductId();
+onProductChange(productId => {
+  runSnapshots.set(displayedProductId, displayedRun);
+  displayedRun = runSnapshots.get(productId) ?? null;
+  displayedProductId = productId;
+  renderTables(displayedRun); renderContext();
+  get('patient-qc-status').textContent = displayedRun ? `Showing saved ${getProduct(productId).name} QC results.` : 'Run QC to simulate 10,000 patients with the selected product and settings.';
+});
 renderTables(); renderContext();

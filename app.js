@@ -1,34 +1,43 @@
 import './patient-qc-ui.js';
-import { DEFAULT_PRODUCT_ID, getProduct } from './products.js';
+import { getProduct } from './products.js';
+import { selectedProductId, onProductChange, beginRun } from './product-ui.js';
 import { patientVolumeType, onPatientVolumeChange } from './volume-ui.js';
 import { eligibleCohortIds, onEligibilityChange } from './eligibility-ui.js';
 import { createCohortRun, addPatientToRun, simulatePatientBatch } from './batch.js';
 import { renderRevenueTab } from './revenue-ui.js';
 import './tabs.js';
-import { brackets, generatePatient, calculateRevenue } from './simulation.js';
+import { getBrackets, generatePatient, calculateRevenue } from './simulation.js';
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const money = cents => currency.format(cents / 100);
 const abandonment = bracket => `${(bracket.abandonmentBasisPoints / 100).toFixed(2)}%`;
 const percent = value => `${(value * 100).toLocaleString('en-US', { maximumFractionDigits: 4 })}%`;
-const probability = bracket => `${(bracket.weight / 10).toFixed(1)}%`;
+const probability = bracket => percent(bracket.weight / getBrackets(bracket.productId).reduce((total, item) => total + item.weight, 0));
 let sequence = 0;
 let currentPatient = null;
 let currentBatch = null;
 const settings = document.querySelector('#voucher-settings');
-const productId = () => document.querySelector('#product').value;
-document.querySelector('#product').value = DEFAULT_PRODUCT_ID;
-for (const selector of ['#wac', '#revenue-wac']) document.querySelector(selector).value = (getProduct(DEFAULT_PRODUCT_ID).wacCents / 100).toFixed(2);
-
-for (const bracket of brackets) {
-  const row = document.createElement('tr');
-  for (const value of [`${bracket.id}. ${bracket.label}`, probability(bracket), money(bracket.oopCents), abandonment(bracket)]) {
-    const cell = document.createElement('td');
-    cell.textContent = value;
-    row.append(cell);
+const productId = selectedProductId;
+const snapshots = new Map();
+let displayedProductId = productId();
+function renderProductInfo() {
+  const product = getProduct(productId());
+  for (const selector of ['#wac', '#revenue-wac']) document.querySelector(selector).textContent = money(product.wacCents);
+  const body = document.querySelector('#distribution');
+  body.replaceChildren();
+  const brackets = getBrackets(productId());
+  for (const bracket of brackets) {
+    const row = document.createElement('tr');
+    for (const value of [`${bracket.id}. ${bracket.label}`, probability(bracket), money(bracket.oopCents), abandonment(bracket), `${bracket.gtnRatePercent}%`, percent(bracket.surpriseDropoffBasisPoints / 10000)]) {
+      const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+    }
+    body.append(row);
   }
-  document.querySelector('#distribution').append(row);
+  const sourceTotal = brackets.reduce((total, bracket) => total + bracket.weight, 0) / 10;
+  document.querySelector('#distribution-note').textContent = `${product.name} · ${brackets.length} starting cohorts. Supplied starting percentages total ${sourceTotal.toFixed(1)}%; sampling normalizes them to 100%. Displayed selection probabilities are normalized.`;
+  document.querySelector('#settings-note').textContent = `${product.name}: expanded benefit on fills 1–${product.expandedBenefitFills}, then up to ${money(product.standardBuydownCents)} per fill, within ${money(product.annualBuydownCapCents)} annual support. Eligibility applies to the next run.`;
 }
+renderProductInfo();
 
 onEligibilityChange(() => {
   document.querySelector('#settings-note').textContent = 'Eligibility changed. Generate a patient or run a batch to apply it; existing results keep their original eligibility.';
@@ -50,11 +59,16 @@ for (let month = 1; month <= 12; month++) {
 }
 
 document.querySelector('#generate').addEventListener('click', () => {
-  if (!settings.reportValidity() || !document.querySelector('#wac').reportValidity()) return;
+  if (!settings.reportValidity()) return;
   const policy = {
     eligibleCohortIds: eligibleCohortIds(),
   };
   const patient = generatePatient(++sequence, policy, Math.random, Math.random, Math.random, patientVolumeType(), productId());
+  renderPatient(patient);
+});
+
+function renderPatient(patient) {
+  const policy = patient.voucherPolicy;
   const firstFill = patient.fills[0];
   document.querySelector('#settings-note').textContent = 'Settings applied. Generate another patient for a new independent simulation.';
   document.querySelector('#patient-id').textContent = patient.id;
@@ -136,18 +150,17 @@ document.querySelector('#generate').addEventListener('click', () => {
     status.dataset.filled = String(fill.filled);
     status.title = fill.status;
   }
-});
+}
 
 function renderRevenue() {
-  const input = document.querySelector('#wac');
-  const valid = input.validity.valid;
-  const wacCents = valid ? Math.round(Number(input.value) * 100) : null;
+  const wacCents = getProduct(productId()).wacCents;
+  const valid = Number.isSafeInteger(wacCents);
   let run = currentBatch;
   if (!run && currentPatient) {
     run = createCohortRun(currentPatient.voucherPolicy, currentPatient.patientType, currentPatient.productId);
     addPatientToRun(run, currentPatient);
   }
-  renderRevenueTab(run, wacCents);
+  renderRevenueTab(run, wacCents, productId());
   if (!currentPatient) return;
   const amounts = valid ? calculateRevenue(currentPatient, wacCents) : null;
   document.querySelector('#revenue').textContent = amounts ? money(amounts.revenueCents) : '—';
@@ -158,7 +171,7 @@ function renderRevenue() {
   document.querySelector('#net-revenue-after-costs').textContent = amounts ? money(amounts.netRevenueLessCogsTfCents) : '—';
   document.querySelector('#revenue-formula').textContent = amounts
     ? `${money(amounts.wacCents)} × ${currentPatient.fillCount} completed ${currentPatient.fillCount === 1 ? 'fill' : 'fills'} = ${money(amounts.revenueCents)} revenue. Less ${amounts.gtnRatePercent}% GTN (${money(amounts.gtnDeductionCents)}, starting cohort ${currentPatient.bracket.id}) and ${money(amounts.programSpendCents)} program spend = ${money(amounts.netRevenueCents)} net revenue. Less ${money(amounts.cogsCents)} COGS (1% of WAC) and ${money(amounts.tfCents)} TF ($6.50 × ${amounts.voucherFillCount} eVouchered fills) = ${money(amounts.netRevenueLessCogsTfCents)}.`
-    : 'Enter a valid WAC to calculate revenue. Net revenue = revenue − GTN deduction − program spend.';
+    : 'WAC is fixed by the selected product.';
   for (const fill of currentPatient.fills) {
     const revenueCents = amounts ? fill.filled ? amounts.wacCents : 0 : null;
     document.querySelector(`#fill-wac-${fill.month}`).textContent = amounts && fill.inYear ? money(amounts.wacCents) : '—';
@@ -174,24 +187,18 @@ function renderRevenue() {
     document.querySelector(`#fill-net-after-costs-${fill.month}`).textContent = amounts ? money(revenueCents - gtnCents - fill.voucherCostCents - cogsCents - tfCents) : '—';
   }
 }
-for (const [source, target] of [['#wac', '#revenue-wac'], ['#revenue-wac', '#wac']]) {
-  document.querySelector(source).addEventListener('input', () => {
-    document.querySelector(target).value = document.querySelector(source).value;
-    renderRevenue();
-  });
-}
 
 renderRevenue();
 document.querySelector('#run-batch').addEventListener('click', async () => {
   const countInput = document.querySelector('#patient-count');
-  if (!countInput.reportValidity() || !document.querySelector('#wac').reportValidity()) return;
+  if (!countInput.reportValidity()) return;
   const patientCount = Number(countInput.value);
   const policy = { eligibleCohortIds: eligibleCohortIds() };
   const patientType = patientVolumeType();
   const selectedProduct = productId();
-  const button = document.querySelector('#run-batch');
   const status = document.querySelector('#batch-status');
-  button.disabled = true; countInput.disabled = true;
+  const finishRun = beginRun();
+  countInput.disabled = true;
   try {
     const run = await simulatePatientBatch({ patientCount, policy, patientType, productId: selectedProduct,
       onProgress: (completed, total) => { status.textContent = `Simulated ${completed.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} patients…`; },
@@ -203,7 +210,7 @@ document.querySelector('#run-batch').addEventListener('click', async () => {
     status.textContent = 'The batch could not complete. Previous results are retained; please retry.';
     console.error(error);
   } finally {
-    button.disabled = false; countInput.disabled = false;
+    countInput.disabled = false; finishRun();
   }
 });
 
@@ -211,8 +218,32 @@ onPatientVolumeChange(type => {
   document.querySelector('#batch-status').textContent = `${type === 'continuing' ? 'Continuing' : 'New'} patients selected (monthly volume, persistence, and Initial OOP distribution). Run a new batch to apply it; existing results keep their original volume split.`;
 });
 
-document.querySelector('#product').addEventListener('change', () => {
-  const product = getProduct(productId());
-  for (const selector of ['#wac', '#revenue-wac']) document.querySelector(selector).value = (product.wacCents / 100).toFixed(2);
+function clearPatientView() {
+  for (const id of ['patient-id', 'oop', 'bracket', 'patient-volume-type', 'start-month', 'max-year-fills', 'probability', 'effective-oop', 'behavior-cohort', 'abandonment', 'outcome', 'revenue', 'gtn-rate', 'gtn-deduction', 'program-spend', 'net-revenue', 'net-revenue-after-costs']) document.getElementById(id).textContent = '—';
+  document.querySelector('#patient-id').textContent = 'No patient generated';
+  delete document.querySelector('#outcome').dataset.outcome;
+  for (const cell of document.querySelectorAll('.fill-table tbody td')) {
+    cell.textContent = '—'; delete cell.dataset.filled; cell.title = '';
+  }
+  document.querySelector('#fill-count').textContent = '— / 12 fills';
+  document.querySelector('#fill-bar').style.width = '0%';
+  document.querySelector('#fill-progress').setAttribute('aria-valuenow', '0');
+  document.querySelector('#fill-progress').setAttribute('aria-valuemax', '12');
+  document.querySelector('#fill-progress').setAttribute('aria-valuetext', 'No patient generated');
+  document.querySelector('#fill-scale-max').textContent = '12 possible fills';
+  document.querySelector('#policy-summary').textContent = 'No patient generated yet.';
+  document.querySelector('#year-summary').textContent = 'Generate a patient to see their year.';
+  document.querySelector('#revenue-formula').textContent = 'Generate a patient to inspect the calculation.';
+}
+onProductChange(nextProductId => {
+  snapshots.set(displayedProductId, { patient: currentPatient, batch: currentBatch });
+  const previous = snapshots.get(nextProductId);
+  currentPatient = previous?.patient ?? null;
+  currentBatch = previous?.batch ?? null;
+  displayedProductId = nextProductId;
+  renderProductInfo();
+  if (currentPatient) renderPatient(currentPatient); else clearPatientView();
   renderRevenue();
+  document.querySelector('#batch-status').textContent = currentBatch ? `Showing saved ${getProduct(nextProductId).name} results. Run again to apply the current settings.` : 'Choose the patient count, then run the simulation.';
+  document.querySelector('#revenue-eligibility-note').textContent = 'Eligibility changes apply to the next simulation.';
 });

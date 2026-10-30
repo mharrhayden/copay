@@ -4,8 +4,8 @@ import { DEFAULT_PRODUCT_ID, products, getProduct } from './products.js';
 import { voucherBenefit, generatePatient, defaultVoucherPolicy, calculateRevenue } from './simulation.js';
 import { createCohortRun, addPatientToRun, cohortRevenue } from './batch.js';
 
-test('Ubrelvy is the only product and provides exact WAC and standard-benefit defaults', () => {
-  assert.deepEqual(Object.keys(products), ['ubrelvy']);
+test('product catalog retains Ubrelvy defaults and includes Qulipta', () => {
+  assert.deepEqual(Object.keys(products), ['ubrelvy', 'qulipta']);
   assert.equal(DEFAULT_PRODUCT_ID, 'ubrelvy');
   assert.equal(getProduct().wacCents, 139368);
   assert.equal(getProduct().standardBuydownCents, 58267);

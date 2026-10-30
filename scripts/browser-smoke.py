@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--html', type=Path)
 parser.add_argument('--url', default='http://127.0.0.1:3000/')
 parser.add_argument('--screenshot-dir', type=Path)
+parser.add_argument('--product', choices=['ubrelvy', 'qulipta'], default='ubrelvy')
 parser.add_argument('--patient-type', choices=['new', 'continuing'], default='new')
 args = parser.parse_args()
 url = args.html.resolve().as_uri() if args.html else args.url
@@ -26,13 +27,20 @@ with sync_playwright() as playwright:
         else:
             page.goto(url, wait_until='networkidle', timeout=15000)
         page.wait_for_function("document.querySelectorAll('#distribution tr').length === 17 && !document.querySelector('#run-batch').disabled", timeout=10000)
-        assert page.locator('#cohort-revenue-heading th').count() == 19
+        page.select_option('#product', args.product)
+        cohort_count = 16 if args.product == 'qulipta' else 17
+        wac = '$1,264.80' if args.product == 'qulipta' else '$1,393.68'
+        assert page.locator('#distribution tr').count() == cohort_count
+        assert page.locator('#cohort-revenue-heading th').count() == cohort_count + 2
         assert page.locator('#fill-months th').count() == 13
-        assert page.locator('#patient-qc-actual tr').count() == 17
-        assert page.locator('#revenue-wac').input_value() == '1393.68'
-        assert 'Ubrelvy' in page.locator('#patient-qc-settings').inner_text()
-        assert not page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled')
-        assert page.locator('#recovery-notice').is_hidden()
+        assert page.locator('#patient-qc-actual tr').count() == cohort_count
+        assert page.locator('#revenue-wac').inner_text() == wac
+        assert page.locator('input#wac, input#revenue-wac').count() == 0
+        assert args.product.capitalize() in page.locator('#patient-qc-settings').inner_text()
+        assert page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled') == (args.product == 'qulipta')
+        assert page.locator('#recovery-notice').is_hidden() == (args.product == 'ubrelvy')
+        assert page.locator('html').get_attribute('data-product') == args.product
+        assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--theme-hue').trim()") == ('112' if args.product == 'qulipta' else '210')
         page.select_option('#volume-type', args.patient_type)
         expected_type = 'Continuing' if args.patient_type == 'continuing' else 'New'
         page.locator('#simulation-tab').click()
@@ -53,8 +61,9 @@ with sync_playwright() as playwright:
         def drag_handle(locator, target):
             box = locator.bounding_box()
             current = int(locator.input_value())
-            x = box['x'] + 11 + current / 16 * (box['width'] - 22)
-            end = box['x'] + 11 + target / 16 * (box['width'] - 22)
+            maximum = int(locator.get_attribute('max'))
+            x = box['x'] + 11 + current / maximum * (box['width'] - 22)
+            end = box['x'] + 11 + target / maximum * (box['width'] - 22)
             y = box['y'] + box['height'] / 2
             page.mouse.move(x, y)
             page.mouse.down()
@@ -75,10 +84,12 @@ with sync_playwright() as playwright:
         assert low.input_value() == '12'
         high.focus(); page.keyboard.press('ArrowLeft')
         assert high.input_value() == '12'
-        high.fill('16'); high.dispatch_event('input')
+        high.fill(str(cohort_count - 1)); high.dispatch_event('input')
         low.fill('0'); low.dispatch_event('input')
         page.locator('#patient-count').fill('10000')
         page.locator('#run-batch').click()
+        assert page.locator('#product').is_disabled()
+        assert page.locator('#volume-type').is_disabled()
         page.wait_for_function("document.querySelector('#batch-status').textContent.startsWith('Complete: 10,000')", timeout=30000)
         assert page.locator('#cohort-revenue-body tr').first.locator('td').last.inner_text() == '10,000'
         assert expected_type in page.locator('#revenue-patient').inner_text()
@@ -92,11 +103,24 @@ with sync_playwright() as playwright:
         assert page.locator('#patient-qc-matrix-check').inner_text().startswith('Reconciled:')
         assert page.locator('#patient-qc-matrix-body tr').count() == 12
         page.locator('#revenue-tab').click()
-        page.locator('#revenue-wac').fill('1400.00')
-        assert page.locator('#wac').input_value() == '1400.00'
+        assert page.locator('#wac').inner_text() == wac
         page.locator('#rev-lower').fill('6')
         page.locator('#rev-lower').dispatch_event('input')
         assert page.locator('#sim-lower').input_value() == '6'
+        # Switching products must change cohort structure, theme, WAC and result
+        # context together. Returning restores the original product's results.
+        original_results = page.locator('#cohort-revenue-body').inner_text()
+        original_net = page.locator('#overview-net').inner_text()
+        other = 'qulipta' if args.product == 'ubrelvy' else 'ubrelvy'
+        page.select_option('#product', other)
+        assert page.locator('html').get_attribute('data-product') == other
+        assert page.locator('#cohort-revenue-heading th').count() == (18 if other == 'qulipta' else 19)
+        assert page.locator('#overview-patients').inner_text() == '—'
+        assert page.locator('#wac').inner_text() != wac
+        page.select_option('#product', args.product)
+        assert page.locator('#cohort-revenue-body').inner_text() == original_results
+        assert page.locator('#overview-net').inner_text() == original_net
+        assert page.locator('#wac').inner_text() == wac
         assert not errors, errors
         assert not external_requests, 'Standalone HTML made network requests'
         if args.screenshot_dir:
@@ -108,7 +132,7 @@ with sync_playwright() as playwright:
         if args.screenshot_dir:
             page.evaluate('scrollTo(0,0)')
             page.screenshot(path=str(args.screenshot_dir / 'copay-mobile.png'), full_page=True)
-        print(f'Browser passed for {expected_type}: shared-rail dragging, keyboard bounds and synchronization; patient generation with correct OOP/persistence tables, 10,000-patient revenue batch, 10,000-patient QC, matrix reconciliation, tabs, synchronized settings, and mobile width.')
+        print(f'Browser passed for {args.product} {expected_type}: shared-rail dragging, keyboard bounds and synchronization; patient generation with correct OOP/persistence tables, 10,000-patient revenue batch, 10,000-patient QC, matrix reconciliation, tabs, product snapshots, fixed WAC, product palettes, synchronized settings, and mobile width.')
         if args.html:
             print('Standalone HTML content loaded with zero network requests (managed browser policy blocks file:// navigation).')
     finally:

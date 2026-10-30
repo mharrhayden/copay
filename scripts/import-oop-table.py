@@ -10,16 +10,18 @@ IDS = list('ABCDEFGHIJKLM') + list('OPQR')
 RANGES = ['0', '0.01-5', '5.01-10', '10.01-15', '15.01-20', '20.01-25', '25.01-50', '50.01-100', '100.01-200', '200.01-300', '300.01-400', '400.01-500', '500.01-600', '600.01-800', '800.01-1000', '1000.01-1300', '1300+']
 BY_RANGE = dict(zip(RANGES, IDS))
 
-def cohort(label):
+def cohort(label, product='ubrelvy'):
+    by_range = dict(zip(RANGES[:-2] + ['1000+'], IDS[:-1])) if product == 'qulipta' else BY_RANGE
     match = re.fullmatch(r'[A-Z]+\.\s*(.+)', label.strip())
     if not match:
         raise ValueError(f'Invalid cohort label: {label!r}')
     interval = re.sub(r'[$,\s]', '', match[1]).replace('–', '-').replace('—', '-')
-    if interval not in BY_RANGE:
+    if interval not in by_range:
         raise ValueError(f'Unknown OOP dollar range: {label!r}')
-    return BY_RANGE[interval]
+    return by_range[interval]
 
-def read_table(path):
+def read_table(path, product='ubrelvy'):
+    ids = IDS[:-1] if product == 'qulipta' else IDS
     data = {}
     original = None
     rows = 0
@@ -29,10 +31,10 @@ def read_table(path):
         if len(row) < 14 or any(value.strip() for value in row[14:]):
             raise ValueError(f'Line {number}: expected exactly 12 fill columns')
         if row[0].strip():
-            original = cohort(row[0])
+            original = cohort(row[0], product)
         if original is None:
             raise ValueError(f'Line {number}: missing starting cohort')
-        target = cohort(row[1])
+        target = cohort(row[1], product)
         weights = []
         for cell in row[2:14]:
             if not cell.strip().endswith('%'):
@@ -45,12 +47,12 @@ def read_table(path):
             raise ValueError(f'Line {number}: duplicate {original}/{target}')
         data[original][target] = weights
         rows += 1
-    if set(data) != set(IDS):
-        raise ValueError('Expected all 17 starting cohorts')
+    if set(data) != set(ids):
+        raise ValueError(f'Expected all {len(ids)} starting cohorts')
     totals = []
-    for original in IDS:
+    for original in ids:
         destinations = data[original]
-        if any(IDS.index(target) > IDS.index(original) for target in destinations):
+        if any(ids.index(target) > ids.index(original) for target in destinations):
             raise ValueError(f'{original}: destination exceeds starting OOP')
         for fill in range(12):
             total = sum(weights[fill] for weights in destinations.values())
@@ -65,24 +67,28 @@ def read_table(path):
             previous_total = sum(weights[fill - 1] for weights in destinations.values())
             current_total = sum(weights[fill] for weights in destinations.values())
             previous = current = 0
-            for target in IDS:
+            for target in ids:
                 previous += destinations.get(target, [0] * 12)[fill - 1]
                 current += destinations.get(target, [0] * 12)[fill]
                 if current * previous_total < previous * current_total:
                     raise ValueError(f'{original}, fill {fill + 1}: distribution would permit rising OOP')
-    ordered = {original: {target: data[original][target] for target in IDS if target in data[original]} for original in IDS}
+    ordered = {original: {target: data[original][target] for target in ids if target in data[original]} for original in ids}
     return ordered, rows, min(totals), max(totals)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
     parser.add_argument('--patient-type', choices=['new', 'continuing'], required=True)
+    parser.add_argument('--product', choices=['ubrelvy', 'qulipta'], default='ubrelvy')
     args = parser.parse_args()
-    data, rows, minimum, maximum = read_table(args.source)
+    data, rows, minimum, maximum = read_table(args.source, args.product)
     root = Path(__file__).resolve().parent.parent
     name, export = ('subfill-data.js', 'subfillWeights') if args.patient_type == 'new' else ('continuing-subfill-data.js', 'continuingSubfillWeights')
+    if args.product == 'qulipta':
+        name = 'qulipta-' + name
+        export = 'quliptaSubfillWeights' if args.patient_type == 'new' else 'quliptaContinuingSubfillWeights'
     text = '// Supplied ' + args.patient_type + ' patient OOP table; labels mapped by dollar range.\n// Integer weights are hundredths of a percent; rounded columns normalize during sampling.\n'
     text += f'export const {export} = ' + json.dumps(data, indent=2) + ';\n'
     text += f'for (const destinations of Object.values({export})) {{\n  for (const weights of Object.values(destinations)) Object.freeze(weights);\n  Object.freeze(destinations);\n}}\nObject.freeze({export});\n'
     (root / name).write_text(text)
-    print(f'Imported {rows} rows across 17 starting cohorts and 12 fills. Source totals: {minimum / 100:.2f}%–{maximum / 100:.2f}%. Wrote {name}.')
+    print(f'Imported {rows} rows across {len(data)} starting cohorts and 12 fills. Source totals: {minimum / 100:.2f}%–{maximum / 100:.2f}%. Wrote {name}.')

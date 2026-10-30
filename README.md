@@ -1,8 +1,17 @@
 # Copay eVoucher simulator
 
-Recovered from the supplied conversation export. The page has Revenue summary, Patient simulation, and Patient QC tabs. Most model and UI modules were recovered from the recorded source-writing commands. The original complete page, base styling, and some test edits were absent; those parts were reconstructed. See [recovery/RECOVERY.md](recovery/RECOVERY.md) for provenance and remaining gaps.
+Public site: **https://mharrhayden.github.io/copay/**
 
-## Run
+Select the product in the top-right dropdown. Product selection switches cohort definitions, starting probabilities, OOP amounts, GTN, abandonment, surprise rates, persistence, start-month distributions, benefit rules, fixed WAC, tables, and interface palette together. Each product retains its own in-page patient, revenue, and QC results. A product cannot be switched while a simulation is running.
+
+| Product | Palette | Fixed WAC / fill | Standard buydown / fill | Annual support | Patient types |
+| --- | --- | --- | --- | --- | --- |
+| Ubrelvy | Blue | $1,393.68 | $582.67 | $7,000 | New and Continuing |
+| Qulipta | Green | $1,264.80 | $500.00 | $7,000 | New; Continuing tables pending |
+
+Both products have expanded benefit on their first two fills, with no per-fill maximum within the remaining annual support balance. Eligibility uses two goalposts on one combined bar. WAC is displayed as a fixed product reference; users cannot edit it. COGS remains 1% of WAC and the transaction fee remains $6.50 per completed eVouchered fill.
+
+## Run locally
 
 Use the existing checkout at `/workspace/copay`. Node.js 20+ and Python 3 are required; there are no npm dependencies to install.
 
@@ -11,87 +20,56 @@ cd /workspace/copay
 npm start
 ```
 
-This starts a local static HTTP server on port 3000. No API keys, database, or external service is required. Processes must be restarted in a restored environment. This does not publish the app.
+This serves the static app on port 3000. No API keys, database, or external service are required. Processes must restart after environment restoration. Use existing checkouts; cloud tasks are isolated and do not need new Git worktrees unless explicitly requested.
 
-## Patient data availability
+## Product data
 
-Both **New** and **Continuing** patients are available. Select **Patient type** in Revenue summary; that selection also applies to the next individual patient and Patient QC run. Existing results retain their original patient type until a new run is generated.
+Ubrelvy has 17 cohorts, ending in $1,000.01–$1,300 and $1,300+. Its New and Continuing OOP matrices are in `subfill-data.js` (124 populated rows) and `continuing-subfill-data.js` (147 rows).
 
-- New: `subfill-data.js`, 124 populated starting/destination rows.
-- Continuing: `continuing-subfill-data.js`, 147 populated starting/destination rows.
+Qulipta has 16 cohorts, ending in a single $1,000+ cohort. Its New OOP matrix is in `qulipta-subfill-data.js` (114 rows). The supplied starting probabilities total 99.9%; selection normalizes all supplied weights without changing them. Cohort averages, 2027 GTN, abandonment, and surprise rates are in `cohorts.js`, along with the supplied New persistence curves. The 2025 New/Continuing monthly starting volumes are in `start-month.js` and normalize their rounded source totals. **Qulipta Continuing OOP and persistence tables have not been supplied**, so that option stays unavailable. No Ubrelvy or New-patient data is substituted for it.
 
-Both supplied pivot tables cover all 17 starting cohorts and 12 fills, with rounded source column totals of 99.98%–100.02%. AAA–AAQ labels map by dollar range to A–M, O–R; blank starting-cohort cells carry the preceding cohort. Missing destinations have zero weight. Sampling normalizes the supplied rounded weights without changing them. Each patient type uses its own OOP table, persistence curves, and starting-month volume distribution.
-
-The repeatable import command is:
+The importer maps AAA–AAQ or shorter cohort labels by dollar range, carries blank pivot labels, and treats omitted destinations as zero. It verifies 12 fill columns, percentage precision, duplicate rows, first-fill identity, rounded column totals, and exact cumulative monotonicity before writing:
 
 ```sh
-python3 scripts/import-oop-table.py /path/to/upload.txt --patient-type new
+python3 scripts/import-oop-table.py /path/to/table.txt --patient-type new --product qulipta
 ```
 
-For the Continuing table, use `--patient-type continuing`. The importer checks cohort labels, 12 percentage columns, duplicate rows, first-fill identity, column totals, and the cumulative distributions needed for nonincreasing OOP paths before writing data.
+Use `--product ubrelvy` for Ubrelvy and `--patient-type continuing` for a Continuing source. A future Qulipta Continuing import also needs a supplied persistence table and wiring in `persistence.js` / `subfill-distributions.js` before enabling that type.
 
-## Shared website (GitHub Pages)
+## Model rules
 
-The simulator is prepared for a public website at `https://mharrhayden.github.io/copay/`. The `gh-pages` branch contains only the public application files. A push to that branch does not itself enable GitHub Pages.
+- Starting OOP cohort is drawn once; each cohort uses its supplied average dollar amount.
+- Subsequent Initial OOP is conditioned on the original cohort, patient type, product, and fill number. A shared percentile across fills preserves the source marginals while preventing OOP increases.
+- First-fill abandonment applies after assistance. All later persistence uses the first fill's final OOP cohort and the selected patient's product-specific persistence table. Later fills with remaining copay also receive independent surprise checks using that fill's final OOP cohort.
+- One fill per month, no gaps or restarts, and no fills or spending after December. Monthly entry volumes are product- and patient-type-specific.
+- Support, including expanded benefit, counts against the patient's annual limit. Only completed in-year fills debit support; unused offers and out-of-year fills do not spend. A partial final voucher can exhaust the balance exactly.
+- Revenue is completed fills × fixed product WAC, less starting-cohort GTN and actual support. The final metric also subtracts COGS and transaction fees. Calculations use integer cents and per-fill rounding.
+- Patient QC independently simulates 10,000 patients and reconciles a monthly script matrix for the most populated starting cohort. Ubrelvy's fixed supplied benchmarks remain available. Qulipta benchmarks have not been supplied, so its reference differences display a dash; simulated counts and matrix still work.
 
-One-time activation in [Repository Settings → Pages](https://github.com/mharrhayden/copay/settings/pages):
+## Validate
 
-1. Under **Build and deployment**, choose **Deploy from a branch**.
-2. Select **gh-pages**, folder **/ (root)**, and click **Save**.
-3. Wait for the Pages deployment to finish, then share the URL shown by GitHub.
+```sh
+npm test
+python3 scripts/export-html.py
+python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product ubrelvy --patient-type new
+python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product ubrelvy --patient-type continuing
+python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product qulipta --patient-type new
+```
 
-This is a public site. Patient generation and calculations run in each visitor's browser; there is no server, login, or shared patient storage. Selections and simulation results are local to the current browser page and reset on reload.
+All 56 automated tests pass with zero skipped. The environment's optional browser checks use its existing Playwright and `/usr/lib/chromium/chromium`. They verify patient generation, 10,000-patient revenue/QC runs, matrix reconciliation, correct cohorts/persistence, fixed WAC, product snapshots, palette switching, slider dragging/keyboard bounds, and mobile width. Managed Chromium blocks file:// navigation, so the exact standalone HTML content is loaded into a blank browser page. Use supported command approval if local sockets or browser startup are blocked.
 
-For future updates, commit the source changes, then run:
+The optional `--url` flag tests a served public build, including a project subdirectory. Tests retain an internal WAC override for isolated fixture/repricing assertions; the application always calculates from the fixed catalog WAC and exposes no price entry.
+
+## Share and publish
+
+`exports/copay-simulator.html` embeds CSS, JavaScript, and all available datasets. Rebuild it with `python3 scripts/export-html.py`. Some file previews block script execution; the hosted URL is the preferred team-sharing route.
+
+The public site uses GitHub Pages, deploying from `gh-pages`, folder `/ (root)`. That branch contains only runtime files; no tests, recovery notes, or development helpers. After committing source changes:
 
 ```sh
 npm run publish:pages
 ```
 
-The command builds `_site`, publishes its runtime files with a regular Git push, and preserves the current checkout. The public build excludes tests, recovery notes, and development helpers. Subsequent pushes redeploy automatically after the one-time Pages setting is enabled. The hosted site serves ordinary HTML, CSS, and JavaScript modules over HTTPS and does not depend on a browser or file preview accepting the standalone HTML's embedded modules.
+This builds `_site` and pushes its files using an isolated Git index, preserving the checkout. Existing Pages settings trigger deployment automatically. Website visitors run calculations in their own browsers; there is no server, login, or shared result storage. Results reset on reload.
 
-## Standalone HTML
-
-Open `exports/copay-simulator.html` in a modern browser. It embeds all application JavaScript, styling, and available source data and needs no server or internet connection. Use Download if a file preview does not execute JavaScript. Results and settings reset when the page reloads.
-
-Rebuild after source changes:
-
-```sh
-python3 scripts/export-html.py
-```
-
-## Validation
-
-```sh
-npm run test:core
-npm test
-```
-
-The core suite uses explicit constant-cost schedules to validate clinical and financial rules independently of OOP transitions. The complete suite also exercises the actual New and Continuing tables, cumulative distributions, persistence, calendar cutoff, annual support limits, revenue, and QC aggregation. All 46 tests pass; no tests are skipped.
-
-An optional interface check uses the environment's existing Playwright and Chromium installations. Start the server first, then run:
-
-```sh
-python3 scripts/browser-smoke.py
-```
-
-If a command sandbox prevents local sockets or browser startup, use the supported command approval flow. The test runner runs each test file directly so this environment reports individual test counts and failures reliably.
-
-## Recovered model rules
-
-- Starting OOP: 17 weighted cohorts, with supplied fixed dollar amounts. The original labels omit N.
-- Later OOP: distributions conditioned on starting cohort, patient type, and fill number; a shared percentile couples later fills into a nonincreasing cost path. Both source matrices are restored.
-- Ubrelvy: WAC $1,393.68; standard support up to $582.67 per fill. Expanded benefit covers fills 1–2 without a per-fill maximum. All support, including expanded benefit, counts toward a $7,000 annual patient limit.
-- Eligibility: synchronized lower/upper starting-cohort bounds; each run snapshots its policy, product, and patient type.
-- Abandonment applies once after first-fill assistance. Persistence stays tied to the first fill's final OOP cohort and uses the New or Continuing cumulative curve. Subsequent fills with remaining copay also receive an independent surprise drop-off check.
-- One fill per month, no restarts, and no fills or spending after December. New and Continuing patients use different starting-month distributions.
-- Revenue: completed fills × WAC, less starting-cohort GTN and actual support spend. The final measure also subtracts COGS at 1% of WAC and a $6.50 transaction fee per eVouchered completed fill. Amounts use integer cents; WAC changes reprice existing fills.
-- Patient QC: a separate 10,000-patient run, fixed supplied benchmarks, signed percentage differences, and a monthly script matrix for the most populated starting cohort. The abandoned Program filter and obsolete OOP/start-month UI tabs were not restored.
-
-Latest validation: all 46 tests pass. For each patient type, 170,000 sampled OOP paths (17 cohorts × 10,000 percentiles) remain nonincreasing and agree with every monthly distribution within 0.01 percentage points. Browser validation of the exact standalone document covers New and Continuing patient generation, separate 10,000-patient revenue and QC runs, and matrix reconciliation with no network requests. This managed browser blocks file:// navigation, so the standalone document is loaded into a blank browser page for that check.
-
-To check Continuing patients in the standalone export:
-
-```sh
-python3 scripts/browser-smoke.py --html exports/copay-simulator.html --patient-type continuing
-```
+Source backup branch: `copay-simulator-recovery`. Historical reconstruction details are in [recovery/RECOVERY.md](recovery/RECOVERY.md).
