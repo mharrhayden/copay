@@ -7,7 +7,7 @@ Select the product in the top-right dropdown. Product selection switches cohort 
 | Product | Palette | Fixed WAC / fill | Standard buydown / fill | Annual support | Patient types |
 | --- | --- | --- | --- | --- | --- |
 | Ubrelvy | Blue | $1,393.68 | $582.67 | $7,000 | New and Continuing |
-| Qulipta | Green | $1,264.80 | $500.00 | $7,000 | New; Continuing persistence pending |
+| Qulipta | Green | $1,264.80 | $500.00 | $7,000 | New and Continuing |
 
 Both products have expanded benefit on their first two fills, with no per-fill maximum within the remaining annual support balance. Eligibility uses two goalposts on one combined bar. WAC is displayed as a fixed product reference; users cannot edit it. COGS remains 1% of WAC and the transaction fee remains $6.50 per completed eVouchered fill.
 
@@ -26,7 +26,7 @@ This serves the static app on port 3000. No API keys, database, or external serv
 
 Ubrelvy has 17 cohorts, ending in $1,000.01–$1,300 and $1,300+. Its New and Continuing OOP matrices are in `subfill-data.js` (124 populated rows) and `continuing-subfill-data.js` (147 rows).
 
-Qulipta has 16 cohorts, ending in a single $1,000+ cohort. Its New OOP matrix is in `qulipta-subfill-data.js` (114 rows), and its Continuing OOP matrix is in `qulipta-continuing-subfill-data.js` (128 rows). The supplied starting probabilities total 99.9%; selection normalizes all supplied weights without changing them. Cohort averages, 2027 GTN, abandonment, and surprise rates are in `cohorts.js`, along with the supplied New persistence curves. The 2025 New/Continuing monthly starting volumes are in `start-month.js` and normalize their rounded source totals. **Qulipta Continuing persistence curves have not been supplied**, so that option stays unavailable. No Ubrelvy or New-patient data is substituted for it.
+Qulipta has 16 cohorts, ending in a single $1,000+ cohort. Its New OOP matrix is in `qulipta-subfill-data.js` (114 rows), and its Continuing OOP matrix is in `qulipta-continuing-subfill-data.js` (128 rows). The supplied starting probabilities total 99.9%; selection normalizes all supplied weights without changing them. Cohort averages, 2027 GTN, abandonment, and surprise rates are in `cohorts.js`, along with the supplied New persistence curves. The separate Continuing curves are in `persistence.js`. The 2025 New/Continuing monthly starting volumes are in `start-month.js` and normalize their rounded source totals. Both Qulipta patient types are enabled and use their own OOP, persistence, and monthly starting-volume data. No Ubrelvy or New-patient data is substituted for Continuing patients.
 
 The importer maps AAA–AAQ or shorter cohort labels by dollar range, carries blank pivot labels, and treats omitted destinations as zero. It verifies 12 fill columns, percentage precision, duplicate rows, first-fill identity, rounded column totals, and exact cumulative monotonicity before writing:
 
@@ -34,7 +34,7 @@ The importer maps AAA–AAQ or shorter cohort labels by dollar range, carries bl
 python3 scripts/import-oop-table.py /path/to/table.txt --patient-type new --product qulipta
 ```
 
-Use `--product ubrelvy` for Ubrelvy and `--patient-type continuing` for a Continuing source. The Qulipta Continuing subfill table is now routed by `subfill-distributions.js`. Its supplied persistence curves still need to be added in `persistence.js` before enabling that type.
+Use `--product ubrelvy` for Ubrelvy and `--patient-type continuing` for a Continuing source. The Qulipta Continuing subfill table is routed by `subfill-distributions.js`, with its supplied persistence curves in `persistence.js`. All four product/patient-type combinations are enabled.
 
 ## Model rules
 
@@ -54,9 +54,10 @@ python3 scripts/export-html.py
 python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product ubrelvy --patient-type new
 python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product ubrelvy --patient-type continuing
 python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product qulipta --patient-type new
+python3 scripts/browser-smoke.py --html exports/copay-simulator.html --product qulipta --patient-type continuing
 ```
 
-All 57 automated tests pass with zero skipped. The environment's optional browser checks use its existing Playwright and `/usr/lib/chromium/chromium`. They verify patient generation, 10,000-patient revenue/QC runs, matrix reconciliation, correct cohorts/persistence, fixed WAC, product snapshots, palette switching, slider dragging/keyboard bounds, and mobile width. Managed Chromium blocks file:// navigation, so the exact standalone HTML content is loaded into a blank browser page. Use supported command approval if local sockets or browser startup are blocked.
+All 59 automated tests pass with zero skipped. The environment's optional browser checks use its existing Playwright and `/usr/lib/chromium/chromium`. They verify patient generation, 10,000-patient revenue/QC runs, matrix reconciliation, correct cohorts/persistence, fixed WAC, product snapshots, palette switching, slider dragging/keyboard bounds, and mobile width. Managed Chromium blocks file:// navigation, so the exact standalone HTML content is loaded into a blank browser page. Use supported command approval if local sockets or browser startup are blocked.
 
 The optional `--url` flag tests a served public build, including a project subdirectory. Tests retain an internal WAC override for isolated fixture/repricing assertions; the application always calculates from the fixed catalog WAC and exposes no price entry.
 

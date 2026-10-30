@@ -136,16 +136,28 @@ test('Qulipta batch totals reconcile and never use Ubrelvy comparison benchmarks
   assert.throws(()=>addPatientToRun(ubrelvy,patient),/product/);
 });
 
-test("Qulipta Continuing awaits only persistence and never borrows another patient type's curves", () => {
+test('Qulipta Continuing is ready and uses its supplied persistence rather than New or Ubrelvy curves', () => {
   assert.equal(hasPatientData('qulipta','new'),true);
-  assert.equal(hasPatientData('qulipta','continuing'),false);
+  assert.equal(hasPatientData('qulipta','continuing'),true);
   assert.deepEqual(missingModelInputs('qulipta','new'),[]);
-  assert.deepEqual(missingModelInputs('qulipta','continuing'),['Continuing persistence curves']);
+  assert.deepEqual(missingModelInputs('qulipta','continuing'),[]);
   assert.equal(getSubfillWeights('continuing','qulipta').B.A[1],4699);
-  assert.throws(()=>getPersistenceCurve(get('A'),'continuing'),/not been supplied/);
-  assert.throws(()=>generatePatient(1,policy,()=>0.5,()=>0.5,()=>0,'continuing','qulipta'),/not been supplied/);
+  assert.deepEqual(getPersistenceCurve(get('A'),'continuing'),[100,96,93,83,76,70,64,57,51,46,37,22]);
+  assert.deepEqual(getPersistenceCurve(get('Q'),'continuing'),[100,60,47,40,35,32,28,26,23,20,16,9]);
+  assert.notEqual(getPersistenceCurve(get('A'),'continuing'),getPersistenceCurve(get('A'),'new'));
+  assert.deepEqual(brackets.map(b=>getPersistenceCurve(b,'continuing')[1]),[96,92,90,89,90,87,86,86,77,77,79,78,79,66,58,60]);
+  assert.deepEqual(brackets.map(b=>getPersistenceCurve(b,'continuing')[11]),[22,21,22,21,20,20,17,16,15,15,13,12,11,11,10,9]);
+  for(const bracket of brackets){
+    const curve=getPersistenceCurve(bracket,'continuing');
+    assert.ok(Object.isFrozen(curve));
+    let surviving=1;
+    for(let fill=2;fill<=12;fill++){
+      assert.ok(curve[fill-1]<=curve[fill-2]);
+      surviving*=continuationProbability(bracket,fill,'continuing');
+      assert.ok(Math.abs(surviving-curve[fill-1]/100)<1e-12);
+    }
+  }
 });
-
 
 test('Qulipta Continuing subfill table preserves all source marginals and never uses the New table', () => {
   const continuing=getSubfillWeights('continuing','qulipta');
@@ -162,4 +174,42 @@ test('Qulipta Continuing subfill table preserves all source marginals and never 
     assert.ok(qc.maxDifferencePp<=0.010000001,bracket.id);
     assert.equal(qc.counts[0][bracket.id],10000);
   }
+});
+
+
+test('same clinical draws follow the separate Qulipta New and Continuing persistence curves', () => {
+  const make=type=>generatePatient(1,policy,draws(0.4,0.99,0.85),()=>0.999999,()=>0,type,'qulipta');
+  const fresh=make('new');
+  const continuing=make('continuing');
+  assert.equal(fresh.fillCount,1);
+  assert.equal(continuing.fillCount,2);
+  assert.equal(continuing.patientType,'continuing');
+  assert.equal(continuing.fills[1].persistenceType,'continuing');
+  assert.equal(continuing.fills[1].cohortRetentionPercent,96);
+  assert.equal(continuing.fills[1].persistenceProbability,0.96);
+  assert.equal(continuing.fills[2].persistenceProbability,93/96);
+  assert.equal(continuing.programSpendCents,8002);
+  const december=generatePatient(1,policy,draws(0.4,0.99),()=>0.999999,()=>0.999999,'continuing','qulipta');
+  assert.equal(december.startMonth,12);
+  assert.equal(december.fillCount,1);
+  assert.ok(december.fills.slice(1).every(f=>!f.attempted&&f.voucherCostCents===0));
+});
+
+test('Qulipta Continuing batch reconciles clinical outcomes, calendar QC, benefits and fixed-price financials', async () => {
+  let seed=20251030;
+  const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  const run=await simulatePatientBatch({patientCount:1000,policy,patientType:'continuing',productId:'qulipta',random,yieldControl:async()=>{}});
+  assert.equal(run.patientCount,1000);
+  assert.equal(run.cohorts.length,16);
+  assert.equal(run.startMonthStats.patientType,'continuing');
+  assert.equal(run.startMonthStats.outsideYearFills,0);
+  assert.equal(run.startMonthStats.fillLimitViolations,0);
+  const money=cohortRevenue(run).totals;
+  assert.equal(money.patientCount,1000);
+  assert.ok(money.fillCount>money.patientsFilling);
+  assert.ok(money.programSpendCents<=1000*700000);
+  assert.equal(money.revenueCents,money.fillCount*126480);
+  assert.equal(money.netRevenueCents,money.revenuePostGtnCents-money.programSpendCents);
+  assert.equal(buildPatientQc(run).total.actual.scripts,money.fillCount);
+  assert.equal(buildMostPopulatedCohortMatrix(run).reconciles,true);
 });

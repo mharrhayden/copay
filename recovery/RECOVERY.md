@@ -65,3 +65,9 @@ Validation: all 56 model tests pass with zero skipped. The 10 new Qulipta tests 
 Imported the subsequently supplied Qulipta Continuing subfill distribution: 128 sparse rows, 16 starting cohorts, 12 fills, and rounded source totals of 99.98%–100.01%. The existing dollar-range importer validated first-fill identity, cumulative monotonicity, precision, and totals. Routed Continuing cost schedules to this separate immutable table; no New/Ubrelvy cost data is substituted. The tests sweep 160,000 Continuing cost paths and reconcile each monthly marginal within 0.01 percentage points, with zero OOP increases. Full suite: 57 passed, zero failed or skipped.
 
 Only Qulipta Continuing persistence curves remain missing. The engine continues to reject unsupported clinical simulation; the dropdown and banner identify persistence as the remaining input rather than claiming the OOP table is absent. The generated site and standalone export include the imported Continuing matrix.
+
+## Qulipta Continuing persistence restored and simulation enabled
+
+The user supplied all 16 Continuing persistence curves, covering fills 1–12. These are stored as immutable product-specific arrays in `persistence.js` and selected only for Qulipta Continuing patients. The $0 curve begins 100%, 96%, 93% and ends at 22% at fill 12; the $1,000+ curve ends at 9%. New curves, Ubrelvy curves, fixed WAC, and benefit settings are unchanged.
+
+Readiness now enables Qulipta Continuing automatically and hides the missing-input notice. Full suite: 59 passed, zero failed or skipped. Added checks for curve routing and cumulative probabilities, different outcomes from the same New/Continuing clinical draws, December cutoff, and a seeded Continuing batch reconciling calendar, patient QC, program spend, and fixed-WAC financials. The browser check now expects Continuing to be available for both products. All four combinations have complete source data.

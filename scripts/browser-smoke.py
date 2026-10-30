@@ -37,12 +37,8 @@ with sync_playwright() as playwright:
         assert page.locator('#revenue-wac').inner_text() == wac
         assert page.locator('input#wac, input#revenue-wac').count() == 0
         assert args.product.capitalize() in page.locator('#patient-qc-settings').inner_text()
-        assert page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled') == (args.product == 'qulipta')
-        assert page.locator('#recovery-notice').is_hidden() == (args.product == 'ubrelvy')
-        if args.product == 'qulipta':
-            assert 'persistence curves' in page.locator('#recovery-notice').inner_text()
-            assert 'OOP distributions' not in page.locator('#recovery-notice').inner_text()
-            assert 'persistence needed' in page.locator('#volume-type option[value=continuing]').inner_text()
+        assert not page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled')
+        assert page.locator('#recovery-notice').is_hidden()
         assert page.locator('html').get_attribute('data-product') == args.product
         assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--theme-hue').trim()") == ('112' if args.product == 'qulipta' else '210')
         page.select_option('#volume-type', args.patient_type)

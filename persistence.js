@@ -19,10 +19,240 @@ const continuing = {
 };
 export const continuingPersistence = Object.freeze(Object.fromEntries(Object.entries(continuing).map(([id, curve]) => [id, Object.freeze(curve)])));
 
+// Supplied Qulipta Continuing cumulative persistence, conditional on fill 1.
+const quliptaContinuing = {
+  "A": [
+    100,
+    96,
+    93,
+    83,
+    76,
+    70,
+    64,
+    57,
+    51,
+    46,
+    37,
+    22
+  ],
+  "B": [
+    100,
+    92,
+    90,
+    80,
+    73,
+    67,
+    62,
+    55,
+    50,
+    44,
+    36,
+    21
+  ],
+  "C": [
+    100,
+    90,
+    80,
+    74,
+    69,
+    64,
+    60,
+    56,
+    51,
+    45,
+    37,
+    22
+  ],
+  "D": [
+    100,
+    89,
+    77,
+    71,
+    66,
+    62,
+    58,
+    53,
+    49,
+    43,
+    35,
+    21
+  ],
+  "E": [
+    100,
+    90,
+    74,
+    68,
+    63,
+    59,
+    55,
+    51,
+    46,
+    41,
+    34,
+    20
+  ],
+  "F": [
+    100,
+    87,
+    71,
+    65,
+    61,
+    57,
+    53,
+    49,
+    45,
+    40,
+    32,
+    20
+  ],
+  "G": [
+    100,
+    86,
+    71,
+    65,
+    60,
+    54,
+    50,
+    45,
+    41,
+    35,
+    29,
+    17
+  ],
+  "H": [
+    100,
+    86,
+    69,
+    62,
+    57,
+    52,
+    47,
+    42,
+    38,
+    33,
+    27,
+    16
+  ],
+  "I": [
+    100,
+    77,
+    66,
+    60,
+    55,
+    50,
+    45,
+    40,
+    37,
+    32,
+    26,
+    15
+  ],
+  "J": [
+    100,
+    77,
+    63,
+    57,
+    52,
+    47,
+    43,
+    38,
+    35,
+    30,
+    24,
+    15
+  ],
+  "K": [
+    100,
+    79,
+    64,
+    55,
+    48,
+    43,
+    38,
+    35,
+    31,
+    27,
+    22,
+    13
+  ],
+  "L": [
+    100,
+    78,
+    61,
+    52,
+    45,
+    41,
+    36,
+    33,
+    30,
+    25,
+    21,
+    12
+  ],
+  "M": [
+    100,
+    79,
+    57,
+    48,
+    43,
+    38,
+    34,
+    31,
+    28,
+    24,
+    20,
+    11
+  ],
+  "O": [
+    100,
+    66,
+    54,
+    46,
+    41,
+    37,
+    32,
+    30,
+    27,
+    23,
+    19,
+    11
+  ],
+  "P": [
+    100,
+    58,
+    51,
+    43,
+    38,
+    34,
+    30,
+    28,
+    25,
+    21,
+    17,
+    10
+  ],
+  "Q": [
+    100,
+    60,
+    47,
+    40,
+    35,
+    32,
+    28,
+    26,
+    23,
+    20,
+    16,
+    9
+  ]
+};
+export const quliptaContinuingPersistence = Object.freeze(Object.fromEntries(Object.entries(quliptaContinuing).map(([id, curve]) => [id, Object.freeze(curve)])));
+
 export function getPersistenceCurve(bracket, patientType = 'new') {
   if (bracket.productId === 'qulipta') {
     if (patientType === 'new') return bracket.retention;
-    throw new Error('Qulipta Continuing persistence curves have not been supplied.');
+    if (patientType === 'continuing' && quliptaContinuingPersistence[bracket.id]) return quliptaContinuingPersistence[bracket.id];
+    throw new RangeError('Unknown Qulipta persistence type or cohort.');
   }
   if (patientType === 'new') return bracket.retention;
   if (patientType === 'continuing' && continuingPersistence[bracket.id]) return continuingPersistence[bracket.id];
