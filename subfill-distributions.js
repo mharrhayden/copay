@@ -1,3 +1,4 @@
+import { quliptaContinuingSubfillWeights } from './qulipta-continuing-subfill-data.js';
 import { quliptaSubfillWeights } from './qulipta-subfill-data.js';
 import { subfillWeights } from './subfill-data.js';
 import { continuingSubfillWeights } from './continuing-subfill-data.js';
@@ -5,7 +6,8 @@ import { continuingSubfillWeights } from './continuing-subfill-data.js';
 export function getSubfillWeights(patientType = 'new', productId = 'ubrelvy') {
   if (productId === 'qulipta') {
     if (patientType === 'new') return quliptaSubfillWeights;
-    throw new Error('Qulipta Continuing OOP distributions have not been supplied.');
+    if (patientType === 'continuing') return quliptaContinuingSubfillWeights;
+    throw new RangeError('Unknown subsequent-fill OOP distribution type.');
   }
   if (productId !== 'ubrelvy') throw new RangeError('Unknown product.');
   if (patientType === 'new') {
