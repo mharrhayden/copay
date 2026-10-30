@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Copay · Patient &amp; eVoucher Simulator</title><link rel="stylesheet" href="styles.css"><script type="module" src="bootstrap.js"></script></head>
+<body>
+<main>
+<header>
+<div>
+<p class="eyebrow">COPAY · PATIENT ECONOMICS</p>
+<h1>Patient &amp; eVoucher simulator</h1>
+</div>
+<label for="product">Product<select id="product"><option value="ubrelvy">Ubrelvy</option></select>
+</label>
+</header>
+<section id="recovery-notice" class="recovery-notice" role="status">New patient simulation is available. Continuing patient simulation needs its separate OOP distribution table.</section>
+<nav class="page-tabs" role="tablist" aria-label="Simulator views">
+<button id="revenue-tab" role="tab" aria-selected="true" aria-controls="revenue-panel">Revenue summary</button>
+<button id="simulation-tab" role="tab" aria-selected="false" aria-controls="simulation-panel" tabindex="-1">Patient simulation</button>
+<button id="patient-qc-tab" role="tab" aria-selected="false" aria-controls="patient-qc-panel" tabindex="-1">Patient QC</button>
+</nav>
+<section id="revenue-panel" class="tab-panel revenue-panel" role="tabpanel" aria-labelledby="revenue-tab">
+<p class="eyebrow">COHORT ECONOMICS</p>
+<h2>Revenue summary</h2>
+<p id="revenue-patient">
+</p>
+<div class="controls">
+<label>Patient type<select id="volume-type"><option value="new">New</option><option value="continuing">Continuing</option></select>
+</label>
+<label>Number of patients<input id="patient-count" type="number" min="1" max="300000" step="1" value="10000" required>
+</label>
+<label>WAC per completed fill ($)<input id="revenue-wac" type="number" min="0" max="1000000" step="0.01" value="1393.68" required>
+</label>
+</div>
+<div class="eligibility-bounds">
+<div class="bounds-title"><span>Eligible starting OOP cohorts</span><strong id="rev-bounds-summary"></strong>
+</div>
+<div id="rev-bounds-track" class="bounds-track">
+<label>Lower bound<input id="rev-lower" type="range" min="0" max="16" step="1" value="0">
+</label>
+<label>Upper bound<input id="rev-upper" type="range" min="0" max="16" step="1" value="16">
+</label>
+</div>
+<div class="bounds-labels"><span id="rev-lower-label"></span><span id="rev-upper-label"></span>
+</div>
+<div id="rev-bounds-ticks" class="bounds-ticks">
+</div>
+</div>
+<p id="revenue-eligibility-note" class="note">Eligibility changes apply to the next simulation.</p>
+<button id="run-batch" disabled>Run simulation</button>
+<p id="batch-status" role="status">Restore the original OOP distribution tables to run a simulation.</p>
+<p id="batch-policy" class="note">
+</p>
+<div class="table-wrap cohort-revenue-wrap" tabindex="0" aria-label="Revenue by starting OOP cohort">
+<table class="cohort-revenue">
+<thead>
+<tr id="cohort-revenue-heading">
+</tr>
+</thead>
+<tbody id="cohort-revenue-body">
+</tbody>
+</table>
+</div>
+<p class="note">Gross revenue = WAC × completed fills. Net revenue subtracts starting-cohort GTN and actual program spend. The final row also subtracts 1% of WAC for COGS and $6.50 per eVouchered fill. Repricing WAC keeps the simulated patients and fills.</p>
+</section>
+<section id="simulation-panel" class="tab-panel" role="tabpanel" aria-labelledby="simulation-tab" hidden>
+<div class="workspace">
+<article class="patient-card">
+<p class="eyebrow">ONE PATIENT, ONE YEAR</p>
+<h2 id="patient-id">No patient generated</h2>
+<div id="oop" class="cost">—</div>
+<p id="patient-hint" class="note">Original OOP · before assistance</p>
+<dl>
+<div><dt>Starting Initial OOP Cohort</dt><dd id="bracket">—</dd>
+</div>
+<div><dt>Patient type</dt><dd id="patient-volume-type">—</dd>
+</div>
+<div><dt>Starting month</dt><dd id="start-month">—</dd>
+</div>
+<div><dt>Possible fills in year</dt><dd id="max-year-fills">—</dd>
+</div>
+<div><dt>Cohort probability</dt><dd id="probability">—</dd>
+</div>
+<div><dt>First-fill OOP after eVoucher</dt><dd id="effective-oop">—</dd>
+</div>
+<div><dt>First-fill behavior cohort</dt><dd id="behavior-cohort">—</dd>
+</div>
+<div><dt>First-fill abandonment probability</dt><dd id="abandonment">—</dd>
+</div>
+<div><dt>Initial fill outcome</dt><dd id="outcome">—</dd>
+</div>
+</dl>
+<button id="generate" disabled>Generate patient</button>
+</article>
+<article class="spend-card">
+<p class="eyebrow">PATIENT ECONOMICS</p>
+<h2>Annual revenue &amp; support</h2>
+<label>WAC per completed fill ($)<input id="wac" type="number" min="0" max="1000000" step="0.01" value="1393.68" required>
+</label>
+<dl>
+<div><dt>Gross revenue</dt><dd id="revenue">—</dd>
+</div>
+<div><dt>GTN deduction</dt><dd id="gtn-deduction">—</dd>
+</div>
+<div><dt>Program spend</dt><dd id="program-spend">—</dd>
+</div>
+<div><dt>Net revenue</dt><dd id="net-revenue">—</dd>
+</div>
+<div><dt>Net revenue less COGS and TF</dt><dd id="net-revenue-after-costs">—</dd>
+</div>
+</dl><span id="gtn-rate" class="note"></span>
+<p id="revenue-formula" class="note">Generate a patient to inspect the calculation.</p>
+</article>
+</div>
+<section class="year-card" aria-labelledby="year-title">
+<div class="year-heading">
+<div>
+<p class="eyebrow">THE YEAR AHEAD</p>
+<h2 id="year-title">Potential fills over 12 months</h2>
+</div><strong id="fill-count" aria-live="polite">— / 12 fills</strong>
+</div>
+<p id="policy-summary" class="year-note">No patient generated yet.</p>
+<p id="year-summary" aria-live="polite">Generate a patient to see their year.</p>
+<div id="fill-progress" class="fill-progress" role="progressbar" aria-label="Completed fills" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0">
+<div id="fill-bar" class="fill-bar">
+</div>
+</div>
+<div class="bar-scale"><span>0 fills</span><span id="fill-scale-max">12 possible fills</span>
+</div>
+<div class="table-wrap monthly-math" tabindex="0" aria-label="Monthly calculations">
+<table class="fill-table"><caption>Monthly ledger. Planned inputs remain visible after stopping. Only completed in-year fills incur spend.</caption>
+<thead>
+<tr id="fill-months"><th scope="col">Potential fill</th>
+</tr>
+</thead>
+<tbody>
+<tr id="fill-calendar-month"><th scope="row">Calendar month</th>
+</tr>
+<tr id="fill-status"><th scope="row">This patient</th>
+</tr>
+<tr id="fill-original-cohort"><th scope="row">Starting Initial OOP Cohort</th>
+</tr>
+<tr id="fill-original-probability"><th scope="row">Starting cohort probability</th>
+</tr>
+<tr id="fill-oop-distribution"><th scope="row">OOP distribution table</th>
+</tr>
+<tr id="fill-pre-voucher-cohort"><th scope="row">Initial OOP Cohort</th>
+</tr>
+<tr id="fill-subfill-probability"><th scope="row">Sampled cohort probability</th>
+</tr>
+<tr id="fill-initial-oop"><th scope="row">Initial OOP</th>
+</tr>
+<tr id="fill-voucher"><th scope="row">eVoucher</th>
+</tr>
+<tr id="fill-cap"><th scope="row">Buydown maximum</th>
+</tr>
+<tr id="fill-annual-before"><th scope="row">Annual support before fill</th>
+</tr>
+<tr id="fill-buydown"><th scope="row">Available buydown</th>
+</tr>
+<tr id="fill-annual-after"><th scope="row">Annual support after fill</th>
+</tr>
+<tr id="fill-oop"><th scope="row">Final patient OOP</th>
+</tr>
+<tr id="fill-wac"><th scope="row">WAC</th>
+</tr>
+<tr id="fill-revenue"><th scope="row">Gross revenue</th>
+</tr>
+<tr id="fill-gtn-rate"><th scope="row">GTN rate</th>
+</tr>
+<tr id="fill-gtn"><th scope="row">GTN deduction</th>
+</tr>
+<tr id="fill-spend"><th scope="row">Program spend</th>
+</tr>
+<tr id="fill-net-revenue"><th scope="row">Net revenue</th>
+</tr>
+<tr id="fill-cogs"><th scope="row">COGS</th>
+</tr>
+<tr id="fill-tf"><th scope="row">Transaction fee</th>
+</tr>
+<tr id="fill-net-after-costs"><th scope="row">Net revenue less COGS and TF</th>
+</tr>
+<tr id="fill-cohort"><th scope="row">Persistence cohort (fill 1)</th>
+</tr>
+<tr id="fill-persistence-type"><th scope="row">Persistence table</th>
+</tr>
+<tr id="fill-abandonment"><th scope="row">Initial abandonment rate</th>
+</tr>
+<tr id="fill-retention"><th scope="row">This fill cohort retention</th>
+</tr>
+<tr id="fill-persistence"><th scope="row">Base fill chance</th>
+</tr>
+<tr id="fill-oop-cohort"><th scope="row">Final OOP cohort</th>
+</tr>
+<tr id="fill-surprise-rate"><th scope="row">Surprise rate at final OOP</th>
+</tr>
+<tr id="fill-surprise-applies"><th scope="row">Surprise applied this fill?</th>
+</tr>
+<tr id="fill-surprise"><th scope="row">Applied surprise drop-off</th>
+</tr>
+<tr id="fill-chance"><th scope="row">Net fill chance if reached</th>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="year-note">Initial abandonment applies once after the first voucher offer. Later continuation uses the first fill's post-support cohort and the selected patient's persistence table. Each subsequent fill with remaining copay also faces an independent surprise drop-off. No restarts or fills after December.</p>
+</section>
+<form id="voucher-settings" class="voucher-settings">
+<p class="eyebrow">AUTOMATIC ASSISTANCE</p>
+<h2>eVoucher eligibility</h2>
+<div class="eligibility-bounds">
+<div class="bounds-title"><span>Eligible starting OOP cohorts</span><strong id="sim-bounds-summary"></strong>
+</div>
+<div id="sim-bounds-track" class="bounds-track">
+<label>Lower bound<input id="sim-lower" type="range" min="0" max="16" step="1" value="0">
+</label>
+<label>Upper bound<input id="sim-upper" type="range" min="0" max="16" step="1" value="16">
+</label>
+</div>
+<div class="bounds-labels"><span id="sim-lower-label"></span><span id="sim-upper-label"></span>
+</div>
+<div id="sim-bounds-ticks" class="bounds-ticks">
+</div>
+</div>
+<p id="settings-note" class="settings-note">Eligible patients receive expanded benefit on fills 1–2, then up to $582.67 per fill, within a $7,000 annual support maximum.</p>
+</form>
+<details>
+<summary>Supplied starting OOP distribution and abandonment rates</summary>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th>Cohort</th><th>Probability</th><th>Assigned OOP</th><th>Abandonment</th>
+</tr>
+</thead>
+<tbody id="distribution">
+</tbody>
+</table>
+</div>
+</details>
+</section>
+<section id="patient-qc-panel" class="tab-panel qc-panel" role="tabpanel" aria-labelledby="patient-qc-tab" hidden>
+<p class="eyebrow">QUALITY CONTROL</p>
+<h2>Patient utilization QC</h2>
+<p>QC runs exactly 10,000 independent patients using the same rules as Revenue summary. The fixed supplied benchmark has 10,000 attempting patients, 9,023 filling patients, and 20,305 scripts.</p>
+<p id="patient-qc-settings" class="note">
+</p>
+<button id="run-patient-qc" disabled>Simulate 10,000 patients</button>
+<p id="patient-qc-status" role="status">Restore the original OOP distribution tables to run QC.</p>
+<h3>Simulated results</h3>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th scope="col">Cohort</th><th scope="col">Patients Attempting</th><th scope="col">Patients Filling</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
+</tr>
+</thead>
+<tbody id="patient-qc-actual">
+</tbody>
+<tfoot id="patient-qc-actual-total">
+</tfoot>
+</table>
+</div>
+<h3>Percentage difference from supplied benchmark</h3>
+<p class="note">(Simulated − benchmark) / benchmark × 100. Scripts / Patient uses filling patients as the denominator. Hover over differences to inspect the actual and reference values. Differences are descriptive; the benchmark remains fixed for both patient types.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr><th scope="col">Cohort</th><th scope="col">Patients Attempting</th><th scope="col">Patients Filling</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
+</tr>
+</thead>
+<tbody id="patient-qc-difference">
+</tbody>
+<tfoot id="patient-qc-difference-total">
+</tfoot>
+</table>
+</div>
+<h3>Monthly script matrix</h3>
+<p id="patient-qc-matrix-cohort">
+</p>
+<p id="patient-qc-matrix-flow" class="note">
+</p>
+<div class="table-wrap" tabindex="0" aria-label="Completed scripts by starting month">
+<table class="patient-qc-matrix">
+<thead>
+<tr><th scope="col">Starting month</th><th scope="col">Attempting</th><th scope="col">Filling</th><th scope="col">Max fills / patient</th><th scope="col">Jan</th><th scope="col">Feb</th><th scope="col">Mar</th><th scope="col">Apr</th><th scope="col">May</th><th scope="col">Jun</th><th scope="col">Jul</th><th scope="col">Aug</th><th scope="col">Sep</th><th scope="col">Oct</th><th scope="col">Nov</th><th scope="col">Dec</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
+</tr>
+</thead>
+<tbody id="patient-qc-matrix-body">
+</tbody>
+<tfoot id="patient-qc-matrix-total">
+</tfoot>
+</table>
+</div>
+<p id="patient-qc-matrix-check" role="status">
+</p>
+</section>
+<footer>
+<p>One monthly fill, no gaps or restarts. All amounts in USD. Results and settings reset when the page reloads.</p>
+</footer>
+</main></body></html>
