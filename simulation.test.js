@@ -100,9 +100,19 @@ test('OOP cohort boundaries and invalid draws are checked', () => {
   assert.throws(() => voucherBenefit(1000, 1, true, 'ubrelvy', -1), RangeError);
 });
 
-test('missing original OOP tables fail explicitly rather than produce fabricated results', () => {
-  for (const type of ['new', 'continuing']) {
-    try { getSubfillWeights(type); }
-    catch (error) { assert.match(error.message, /Missing .* patient OOP table/); }
+test('both patient types have complete, distinct, immutable OOP source tables', () => {
+  const newWeights = getSubfillWeights('new');
+  const continuingWeights = getSubfillWeights('continuing');
+  assert.notEqual(newWeights, continuingWeights);
+  for (const weights of [newWeights, continuingWeights]) {
+    assert.deepEqual(Object.keys(weights), brackets.map(bracket => bracket.id));
+    assert.ok(Object.isFrozen(weights));
+    for (const destinations of Object.values(weights)) {
+      assert.ok(Object.isFrozen(destinations));
+      for (const values of Object.values(destinations)) {
+        assert.equal(values.length, 12);
+        assert.ok(Object.isFrozen(values));
+      }
+    }
   }
 });

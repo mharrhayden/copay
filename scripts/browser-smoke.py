@@ -6,6 +6,7 @@ from playwright.sync_api import sync_playwright
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--html', type=Path)
 parser.add_argument('--screenshot-dir', type=Path)
+parser.add_argument('--patient-type', choices=['new', 'continuing'], default='new')
 args = parser.parse_args()
 url = args.html.resolve().as_uri() if args.html else 'http://127.0.0.1:3000/'
 with sync_playwright() as playwright:
@@ -29,10 +30,16 @@ with sync_playwright() as playwright:
         assert page.locator('#patient-qc-actual tr').count() == 17
         assert page.locator('#revenue-wac').input_value() == '1393.68'
         assert 'Ubrelvy' in page.locator('#patient-qc-settings').inner_text()
-        assert page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled'), page.locator('#recovery-notice').text_content()
+        assert not page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled')
+        assert page.locator('#recovery-notice').is_hidden()
+        page.select_option('#volume-type', args.patient_type)
+        expected_type = 'Continuing' if args.patient_type == 'continuing' else 'New'
         page.locator('#simulation-tab').click()
         page.locator('#generate').click()
         assert page.locator('#patient-id').inner_text() == 'Patient 0001'
+        assert page.locator('#patient-volume-type').inner_text() == expected_type
+        assert page.locator('#fill-oop-distribution-1').inner_text() == expected_type
+        assert page.locator('#fill-persistence-type-1').inner_text() == expected_type
         assert page.locator('#oop').inner_text().startswith('$')
         assert page.locator('#fill-initial-oop-1').inner_text().startswith('$')
         assert 'possible fills' in page.locator('#fill-count').inner_text()
@@ -73,11 +80,13 @@ with sync_playwright() as playwright:
         page.locator('#run-batch').click()
         page.wait_for_function("document.querySelector('#batch-status').textContent.startsWith('Complete: 10,000')", timeout=30000)
         assert page.locator('#cohort-revenue-body tr').first.locator('td').last.inner_text() == '10,000'
+        assert expected_type in page.locator('#revenue-patient').inner_text()
         assert page.locator('#overview-patients').inner_text() == '10,000'
         assert page.locator('#overview-fills').inner_text() != '—'
         page.locator('#patient-qc-tab').click()
         page.locator('#run-patient-qc').click()
         page.wait_for_function("document.querySelector('#patient-qc-status').textContent.startsWith('Complete: 10,000')", timeout=30000)
+        assert expected_type in page.locator('#patient-qc-status').inner_text()
         assert page.locator('#patient-qc-actual-total td').first.inner_text() == '10,000'
         assert page.locator('#patient-qc-matrix-check').inner_text().startswith('Reconciled:')
         assert page.locator('#patient-qc-matrix-body tr').count() == 12
@@ -98,7 +107,7 @@ with sync_playwright() as playwright:
         if args.screenshot_dir:
             page.evaluate('scrollTo(0,0)')
             page.screenshot(path=str(args.screenshot_dir / 'copay-mobile.png'), full_page=True)
-        print('Browser passed: shared-rail dragging, keyboard bounds and synchronization; patient generation, 10,000-patient New batch, 10,000-patient QC, matrix reconciliation, tabs, synchronized settings, mobile width, and unavailable Continuing guard.')
+        print(f'Browser passed for {expected_type}: shared-rail dragging, keyboard bounds and synchronization; patient generation with correct OOP/persistence tables, 10,000-patient revenue batch, 10,000-patient QC, matrix reconciliation, tabs, synchronized settings, and mobile width.')
         if args.html:
             print('Standalone HTML content loaded with zero network requests (managed browser policy blocks file:// navigation).')
     finally:

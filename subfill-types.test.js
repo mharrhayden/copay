@@ -64,7 +64,7 @@ test('type-specific monthly OOP affects voucher spend while keeping first-fill p
   assert.equal(continuing.fills[2].subfillType, 'continuing');
   assert.equal(continuing.fills[2].persistenceType, 'continuing');
   assert.equal(continuing.fills[2].behaviorBracket.id, 'A');
-  assert.equal(calculateRevenue(continuing).netRevenueLessCogsTfCents, 129322);
+  assert.equal(calculateRevenue(continuing, 100000).netRevenueLessCogsTfCents, 129322);
 });
 
 test('OOP QC samples and groups paths from the selected patient type', () => {

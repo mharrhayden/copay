@@ -64,7 +64,7 @@ test('same OOP and clinical draws produce type-specific fill outcomes using post
   assert.equal(continuing.fills[1].persistenceProbability, 0.82);
   assert.equal(continuing.fills[2].cohortRetentionPercent, 65);
   assert.equal(continuing.fills[2].persistenceProbability, 65 / 82);
-  assert.equal(calculateRevenue(continuing).netRevenueLessCogsTfCents, 88690);
+  assert.equal(calculateRevenue(continuing, 100000).netRevenueLessCogsTfCents, 88690);
 });
 
 test('ineligible Continuing patients keep first-fill cohort persistence after a later OOP drop', () => {
