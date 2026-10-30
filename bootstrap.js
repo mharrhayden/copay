@@ -1,35 +1,38 @@
-import { subfillWeights } from './subfill-data.js';
-import { continuingSubfillWeights } from './continuing-subfill-data.js';
-
 try {
   await import('./app.js');
   const { onPatientVolumeChange, patientVolumeType } = await import('./volume-ui.js');
-  const available = {
-    new: Object.keys(subfillWeights).length === 17,
-    continuing: Object.keys(continuingSubfillWeights).length === 17,
-  };
-  for (const option of document.querySelector('#volume-type').options) {
-    option.disabled = !available[option.value];
-    if (!available[option.value]) option.textContent += ' (data needed)';
-  }
+  const { selectedProductId, onProductChange, onBusyChange, isBusy } = await import('./product-ui.js');
+  const { getProduct } = await import('./products.js');
+  const { hasPatientData, missingModelInputs } = await import('./model-readiness.js');
   function updateAvailability() {
-    const unavailable = !available[patientVolumeType()];
+    const productId = selectedProductId();
+    const product = getProduct(productId);
+    const typeInput = document.querySelector('#volume-type');
+    for (const option of typeInput.options) {
+      option.disabled = !hasPatientData(productId, option.value);
+      option.textContent = `${option.value === 'new' ? 'New' : 'Continuing'}${option.disabled ? ' (data needed)' : ''}`;
+    }
+    // Product changes start with a supported type; unavailable tables are never
+    // replaced by another product's or another patient's source distributions.
+    if (!hasPatientData(productId, patientVolumeType()) && hasPatientData(productId, 'new')) {
+      typeInput.value = 'new'; typeInput.dispatchEvent(new Event('change')); return;
+    }
+    const missing = missingModelInputs(productId, patientVolumeType());
     const notice = document.querySelector('#recovery-notice');
-    notice.hidden = available.new && available.continuing;
-    notice.textContent = available.new && !available.continuing
-      ? 'New patient simulation is available. Continuing patient simulation needs its separate OOP distribution table.'
-      : 'Patient simulation needs the original OOP distribution table for the selected patient type.';
+    const missingContinuing = !hasPatientData(productId, 'continuing');
+    notice.hidden = !missing.length && !missingContinuing;
+    notice.textContent = missing.length
+      ? `${product.name} simulation needs: ${missing.join(', ')}.`
+      : `${product.name} New patient simulation is available. Continuing patient OOP and persistence tables have not been supplied.`;
     for (const id of ['generate', 'run-batch', 'run-patient-qc']) {
       const button = document.getElementById(id);
-      button.disabled = unavailable;
-      button.title = unavailable ? 'The OOP distribution for this patient type is unavailable.' : '';
-    }
-    if (!unavailable) {
-      document.querySelector('#batch-status').textContent = 'Choose the patient count, then run the simulation.';
-      document.querySelector('#patient-qc-status').textContent = 'Run QC to simulate 10,000 patients with the selected settings.';
+      button.disabled = missing.length > 0 || isBusy();
+      button.title = missing.length ? `Missing ${missing.join(', ')}` : '';
     }
   }
   onPatientVolumeChange(updateAvailability);
+  onProductChange(updateAvailability);
+  onBusyChange(updateAvailability);
   updateAvailability();
 } catch (error) {
   console.error(error);

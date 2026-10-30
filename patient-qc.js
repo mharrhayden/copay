@@ -1,4 +1,4 @@
-import { brackets } from './simulation.js';
+import { getBrackets } from './cohorts.js';
 
 // Supplied benchmark values, including the displayed Scripts / Patient ratios.
 const values = [
@@ -22,17 +22,18 @@ function totals(rows) {
   return { ...result, scriptsPerPatient: result.filling ? result.scripts / result.filling : null };
 }
 function compare(actual, benchmark) {
+  if (!benchmark) return { attempting: null, filling: null, scripts: null, scriptsPerPatient: null };
   return Object.fromEntries(Object.keys(benchmark).map(key => [key, percentageDifference(actual[key], benchmark[key])]));
 }
 export function buildPatientQc(run) {
-  const rows = brackets.map(bracket => {
+  const rows = getBrackets(run.productId).map(bracket => {
     const cohort = run.cohorts.find(item => item.bracket.id === bracket.id);
     const actual = { attempting: cohort.patientCount, filling: cohort.patientsFilling, scripts: cohort.fillCount, scriptsPerPatient: cohort.patientsFilling ? cohort.fillCount / cohort.patientsFilling : null };
-    const benchmark = patientQcBenchmarks[bracket.id];
+    const benchmark = run.productId === 'ubrelvy' ? patientQcBenchmarks[bracket.id] : null;
     return { bracket, actual, benchmark, differences: compare(actual, benchmark) };
   });
   const actual = totals(rows.map(row => row.actual));
-  const benchmark = totals(Object.values(patientQcBenchmarks));
+  const benchmark = run.productId === 'ubrelvy' ? totals(Object.values(patientQcBenchmarks)) : null;
   return { rows, total: { actual, benchmark, differences: compare(actual, benchmark) } };
 }
 

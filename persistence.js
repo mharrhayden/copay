@@ -20,6 +20,10 @@ const continuing = {
 export const continuingPersistence = Object.freeze(Object.fromEntries(Object.entries(continuing).map(([id, curve]) => [id, Object.freeze(curve)])));
 
 export function getPersistenceCurve(bracket, patientType = 'new') {
+  if (bracket.productId === 'qulipta') {
+    if (patientType === 'new') return bracket.retention;
+    throw new Error('Qulipta Continuing persistence curves have not been supplied.');
+  }
   if (patientType === 'new') return bracket.retention;
   if (patientType === 'continuing' && continuingPersistence[bracket.id]) return continuingPersistence[bracket.id];
   throw new RangeError('Unknown persistence type or cohort.');

@@ -1,6 +1,6 @@
 import { DEFAULT_PRODUCT_ID, getProduct } from './products.js';
 import { createStartMonthStats, addPatientStartMonth } from './start-month.js';
-import { brackets, calculateRevenue, generatePatient } from './simulation.js';
+import { getBrackets, calculateRevenue, generatePatient } from './simulation.js';
 
 export function createCohortRun(policy, patientType = 'new', productId = DEFAULT_PRODUCT_ID) {
   getProduct(productId);
@@ -8,9 +8,9 @@ export function createCohortRun(policy, patientType = 'new', productId = DEFAULT
     patientCount: 0,
     productId,
     patientType,
-    startMonthStats: createStartMonthStats(patientType),
+    startMonthStats: createStartMonthStats(patientType, productId),
     policy: Object.freeze({ eligibleCohortIds: Object.freeze([...policy.eligibleCohortIds]) }),
-    cohorts: brackets.map(bracket => ({ bracket, productId, patientCount: 0, patientsFilling: 0, fillCount: 0, voucherFillCount: 0, programSpendCents: 0,
+    cohorts: getBrackets(productId).map(bracket => ({ bracket, productId, patientCount: 0, patientsFilling: 0, fillCount: 0, voucherFillCount: 0, programSpendCents: 0,
       startMonthRows: Array.from({ length: 12 }, (_, index) => ({ startMonth: index + 1, attempting: 0, filling: 0, calendarFills: Array(12).fill(0) })),
       stopReasons: { initialAbandonment: 0, persistence: 0, copaySurprise: 0, yearEnd: 0 },
     })),

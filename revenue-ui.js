@@ -1,5 +1,5 @@
 import { getProduct } from './products.js';
-import { brackets } from './simulation.js';
+import { getBrackets } from './simulation.js';
 import { cohortRevenue } from './batch.js';
 const get = id => document.querySelector(`#${id}`);
 const money = cents => new Intl.NumberFormat('en-US', {
@@ -10,7 +10,8 @@ const money = cents => new Intl.NumberFormat('en-US', {
 const exactMoney = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 const count = value => value.toLocaleString('en-US');
 
-export function renderRevenueTab(run, wacCents) {
+export function renderRevenueTab(run, wacCents, productId = run?.productId ?? 'ubrelvy') {
+  const brackets = getBrackets(productId);
   const heading = get('cohort-revenue-heading'); heading.replaceChildren();
   for (const label of ['Metric', ...brackets.map(bracket => `${bracket.id}. ${bracket.label}`), 'Total']) {
     const th = document.createElement('th'); th.scope = 'col'; th.textContent = label; heading.append(th);
@@ -54,6 +55,6 @@ export function renderRevenueTab(run, wacCents) {
     ? `${getProduct(run.productId).name} · ${run.patientType === 'continuing' ? 'Continuing' : 'New'} patients · ${count(run.patientCount)} simulated, grouped by starting OOP cohort.`
     : 'Explore how patient costs, eVoucher support, and completed fills shape annual revenue.';
   get('batch-policy').textContent = run
-    ? `Eligibility used for these results: ${run.policy.eligibleCohortIds.length === brackets.length ? 'all starting cohorts' : run.policy.eligibleCohortIds.length ? run.policy.eligibleCohortIds.join(', ') : 'no cohorts'}. WAC changes recalculate this run without resimulating patients.`
+    ? `Eligibility used for these results: ${run.policy.eligibleCohortIds.length === brackets.length ? 'all starting cohorts' : run.policy.eligibleCohortIds.length ? run.policy.eligibleCohortIds.join(', ') : 'no cohorts'}. WAC is fixed by product.`
     : 'Set the eligible cohort range above, then run a simulation to compare results.';
 }
