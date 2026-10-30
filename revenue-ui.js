@@ -47,10 +47,13 @@ export function renderRevenueTab(run, wacCents) {
     }
     body.append(tr);
   }
+  get('overview-patients').textContent = run ? count(run.patientCount) : '—';
+  get('overview-fills').textContent = financial ? count(financial.totals.fillCount) : '—';
+  get('overview-net').textContent = financial ? exactMoney(financial.totals.netRevenueLessCogsTfCents) : '—';
   get('revenue-patient').textContent = run
-    ? `${getProduct(run.productId).name} · ${run.patientType === 'continuing' ? 'Continuing' : 'New'} volume · ${count(run.patientCount)} ${run.patientCount === 1 ? 'patient' : 'patients'}, grouped by starting Initial OOP Cohort. Patients filling completed at least one fill. Gross Revenue is WAC × completed fills; GTN and program spend are deduction amounts.`
-    : 'Choose how many patients to simulate, then run the batch. Results are grouped by starting Initial OOP Cohort.';
+    ? `${getProduct(run.productId).name} · ${run.patientType === 'continuing' ? 'Continuing' : 'New'} patients · ${count(run.patientCount)} simulated, grouped by starting OOP cohort.`
+    : 'Explore how patient costs, eVoucher support, and completed fills shape annual revenue.';
   get('batch-policy').textContent = run
     ? `Eligibility used for these results: ${run.policy.eligibleCohortIds.length === brackets.length ? 'all starting cohorts' : run.policy.eligibleCohortIds.length ? run.policy.eligibleCohortIds.join(', ') : 'no cohorts'}. WAC changes recalculate this run without resimulating patients.`
-    : 'Batch runs use the eVoucher cohort eligibility selected in the Patient simulation tab.';
+    : 'Set the eligible cohort range above, then run a simulation to compare results.';
 }

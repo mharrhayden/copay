@@ -5,6 +5,7 @@ from playwright.sync_api import sync_playwright
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--html', type=Path)
+parser.add_argument('--screenshot-dir', type=Path)
 args = parser.parse_args()
 url = args.html.resolve().as_uri() if args.html else 'http://127.0.0.1:3000/'
 with sync_playwright() as playwright:
@@ -36,10 +37,44 @@ with sync_playwright() as playwright:
         assert page.locator('#fill-initial-oop-1').inner_text().startswith('$')
         assert 'possible fills' in page.locator('#fill-count').inner_text()
         page.locator('#revenue-tab').click()
+        # Exercise the visible thumb hit areas, rather than just setting values.
+        low = page.locator('#rev-lower')
+        high = page.locator('#rev-upper')
+        assert low.bounding_box()['y'] == high.bounding_box()['y']
+        assert page.locator('#rev-bounds-track .bounds-rail').count() == 1
+        def drag_handle(locator, target):
+            box = locator.bounding_box()
+            current = int(locator.input_value())
+            x = box['x'] + 11 + current / 16 * (box['width'] - 22)
+            end = box['x'] + 11 + target / 16 * (box['width'] - 22)
+            y = box['y'] + box['height'] / 2
+            page.mouse.move(x, y)
+            page.mouse.down()
+            page.mouse.move(end, y, steps=12)
+            page.mouse.up()
+        drag_handle(low, 4)
+        drag_handle(high, 12)
+        assert low.input_value() == '4', low.input_value()
+        assert high.input_value() == '12', high.input_value()
+        assert page.locator('#sim-lower').input_value() == '4'
+        assert page.locator('#sim-upper').input_value() == '12'
+        low.focus()
+        page.keyboard.press('ArrowRight')
+        assert low.input_value() == '5'
+        # Coincident bounds remain a valid single-cohort selection.
+        low.fill('12'); low.dispatch_event('input')
+        page.keyboard.press('ArrowRight')
+        assert low.input_value() == '12'
+        high.focus(); page.keyboard.press('ArrowLeft')
+        assert high.input_value() == '12'
+        high.fill('16'); high.dispatch_event('input')
+        low.fill('0'); low.dispatch_event('input')
         page.locator('#patient-count').fill('10000')
         page.locator('#run-batch').click()
         page.wait_for_function("document.querySelector('#batch-status').textContent.startsWith('Complete: 10,000')", timeout=30000)
         assert page.locator('#cohort-revenue-body tr').first.locator('td').last.inner_text() == '10,000'
+        assert page.locator('#overview-patients').inner_text() == '10,000'
+        assert page.locator('#overview-fills').inner_text() != '—'
         page.locator('#patient-qc-tab').click()
         page.locator('#run-patient-qc').click()
         page.wait_for_function("document.querySelector('#patient-qc-status').textContent.startsWith('Complete: 10,000')", timeout=30000)
@@ -54,9 +89,16 @@ with sync_playwright() as playwright:
         assert page.locator('#sim-lower').input_value() == '6'
         assert not errors, errors
         assert not external_requests, 'Standalone HTML made network requests'
+        if args.screenshot_dir:
+            args.screenshot_dir.mkdir(parents=True, exist_ok=True)
+            page.evaluate('scrollTo(0,0)')
+            page.screenshot(path=str(args.screenshot_dir / 'copay-desktop.png'), full_page=True)
         page.set_viewport_size({'width':390,'height':844})
         assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Mobile page overflow'
-        print('Browser passed: patient generation, 10,000-patient New batch, 10,000-patient QC, matrix reconciliation, tabs, synchronized settings, mobile width, and unavailable Continuing guard.')
+        if args.screenshot_dir:
+            page.evaluate('scrollTo(0,0)')
+            page.screenshot(path=str(args.screenshot_dir / 'copay-mobile.png'), full_page=True)
+        print('Browser passed: shared-rail dragging, keyboard bounds and synchronization; patient generation, 10,000-patient New batch, 10,000-patient QC, matrix reconciliation, tabs, synchronized settings, mobile width, and unavailable Continuing guard.')
         if args.html:
             print('Standalone HTML content loaded with zero network requests (managed browser policy blocks file:// navigation).')
     finally:

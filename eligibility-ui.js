@@ -15,6 +15,10 @@ function renderBounds() {
     const low = get(`${prefix}-lower`);
     const high = get(`${prefix}-upper`);
     low.value = String(lower); high.value = String(upper);
+    // At the far-right endpoint, keep the lower handle reachable when both
+    // goalposts coincide. Keyboard focus always brings either handle forward.
+    low.style.zIndex = lower === upper && upper === brackets.length - 1 ? '3' : '2';
+    high.style.zIndex = lower === upper && upper === brackets.length - 1 ? '2' : '3';
     low.setAttribute('aria-valuetext', `${brackets[lower].id}. ${brackets[lower].label}`);
     high.setAttribute('aria-valuetext', `${brackets[upper].id}. ${brackets[upper].label}`);
     get(`${prefix}-lower-label`).textContent = `${brackets[lower].id}. ${brackets[lower].label}`;

@@ -19,8 +19,9 @@
 <section id="revenue-panel" class="tab-panel revenue-panel" role="tabpanel" aria-labelledby="revenue-tab">
 <p class="eyebrow">COHORT ECONOMICS</p>
 <h2>Revenue summary</h2>
-<p id="revenue-patient">
+<p id="revenue-patient" class="panel-description">
 </p>
+<div class="setup-block"><p class="section-label">SIMULATION SETTINGS</p>
 <div class="controls">
 <label>Patient type<select id="volume-type"><option value="new">New</option><option value="continuing">Continuing</option></select>
 </label>
@@ -32,24 +33,31 @@
 <div class="eligibility-bounds">
 <div class="bounds-title"><span>Eligible starting OOP cohorts</span><strong id="rev-bounds-summary"></strong>
 </div>
-<div id="rev-bounds-track" class="bounds-track">
-<label>Lower bound<input id="rev-lower" type="range" min="0" max="16" step="1" value="0">
-</label>
-<label>Upper bound<input id="rev-upper" type="range" min="0" max="16" step="1" value="16">
-</label>
+<div id="rev-bounds-track" class="bounds-track" role="group" aria-label="Eligible OOP cohort range">
+<div class="bounds-rail" aria-hidden="true"></div>
+<div class="bounds-selected" aria-hidden="true"></div>
+<label for="rev-lower" class="visually-hidden">Lower eligible cohort</label>
+<input id="rev-lower" class="bounds-handle bounds-lower" type="range" min="0" max="16" step="1" value="0" aria-describedby="rev-bounds-help">
+<label for="rev-upper" class="visually-hidden">Upper eligible cohort</label>
+<input id="rev-upper" class="bounds-handle bounds-upper" type="range" min="0" max="16" step="1" value="16" aria-describedby="rev-bounds-help">
 </div>
-<div class="bounds-labels"><span id="rev-lower-label"></span><span id="rev-upper-label"></span>
-</div>
-<div id="rev-bounds-ticks" class="bounds-ticks">
-</div>
+<div id="rev-bounds-ticks" class="bounds-ticks" aria-hidden="true"></div>
+<div class="bounds-endpoints"><div><span>FROM</span><strong id="rev-lower-label"></strong></div><div><span>THROUGH</span><strong id="rev-upper-label"></strong></div></div>
+<p id="rev-bounds-help" class="bounds-help">Drag either goalpost to set the eligible range. Use arrow keys for precise changes.</p>
 </div>
 <p id="revenue-eligibility-note" class="note">Eligibility changes apply to the next simulation.</p>
-<button id="run-batch" disabled>Run simulation</button>
-<p id="batch-status" role="status">Restore the original OOP distribution tables to run a simulation.</p>
+<div class="run-controls"><button id="run-batch" disabled>Run simulation <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<p id="batch-status" role="status">Choose the patient count, then run the simulation.</p></div></div>
+<div class="revenue-overview" aria-label="Simulation totals" aria-live="polite">
+<div><span>Patients simulated</span><strong id="overview-patients">—</strong></div>
+<div><span>Completed fills</span><strong id="overview-fills">—</strong></div>
+<div class="overview-net"><span>Net revenue less COGS &amp; TF</span><strong id="overview-net">—</strong></div>
+</div>
+<div class="results-heading"><h3>Results by starting cohort</h3><span>Scroll across to explore all cohorts →</span></div>
 <p id="batch-policy" class="note">
 </p>
 <div class="table-wrap cohort-revenue-wrap" tabindex="0" aria-label="Revenue by starting OOP cohort">
-<table class="cohort-revenue">
+<table class="cohort-revenue-table">
 <thead>
 <tr id="cohort-revenue-heading">
 </tr>
@@ -208,23 +216,24 @@
 <div class="eligibility-bounds">
 <div class="bounds-title"><span>Eligible starting OOP cohorts</span><strong id="sim-bounds-summary"></strong>
 </div>
-<div id="sim-bounds-track" class="bounds-track">
-<label>Lower bound<input id="sim-lower" type="range" min="0" max="16" step="1" value="0">
-</label>
-<label>Upper bound<input id="sim-upper" type="range" min="0" max="16" step="1" value="16">
-</label>
+<div id="sim-bounds-track" class="bounds-track" role="group" aria-label="Eligible OOP cohort range">
+<div class="bounds-rail" aria-hidden="true"></div>
+<div class="bounds-selected" aria-hidden="true"></div>
+<label for="sim-lower" class="visually-hidden">Lower eligible cohort</label>
+<input id="sim-lower" class="bounds-handle bounds-lower" type="range" min="0" max="16" step="1" value="0" aria-describedby="sim-bounds-help">
+<label for="sim-upper" class="visually-hidden">Upper eligible cohort</label>
+<input id="sim-upper" class="bounds-handle bounds-upper" type="range" min="0" max="16" step="1" value="16" aria-describedby="sim-bounds-help">
 </div>
-<div class="bounds-labels"><span id="sim-lower-label"></span><span id="sim-upper-label"></span>
-</div>
-<div id="sim-bounds-ticks" class="bounds-ticks">
-</div>
+<div id="sim-bounds-ticks" class="bounds-ticks" aria-hidden="true"></div>
+<div class="bounds-endpoints"><div><span>FROM</span><strong id="sim-lower-label"></strong></div><div><span>THROUGH</span><strong id="sim-upper-label"></strong></div></div>
+<p id="sim-bounds-help" class="bounds-help">Drag either goalpost to set the eligible range. Use arrow keys for precise changes.</p>
 </div>
 <p id="settings-note" class="settings-note">Eligible patients receive expanded benefit on fills 1–2, then up to $582.67 per fill, within a $7,000 annual support maximum.</p>
 </form>
 <details>
 <summary>Supplied starting OOP distribution and abandonment rates</summary>
 <div class="table-wrap">
-<table>
+<table class="patient-utilization-table">
 <thead>
 <tr><th>Cohort</th><th>Probability</th><th>Assigned OOP</th><th>Abandonment</th>
 </tr>
@@ -235,7 +244,7 @@
 </div>
 </details>
 </section>
-<section id="patient-qc-panel" class="tab-panel qc-panel" role="tabpanel" aria-labelledby="patient-qc-tab" hidden>
+<section id="patient-qc-panel" class="tab-panel qc-panel patient-qc-panel" role="tabpanel" aria-labelledby="patient-qc-tab" hidden>
 <p class="eyebrow">QUALITY CONTROL</p>
 <h2>Patient utilization QC</h2>
 <p>QC runs exactly 10,000 independent patients using the same rules as Revenue summary. The fixed supplied benchmark has 10,000 attempting patients, 9,023 filling patients, and 20,305 scripts.</p>
@@ -245,7 +254,7 @@
 <p id="patient-qc-status" role="status">Restore the original OOP distribution tables to run QC.</p>
 <h3>Simulated results</h3>
 <div class="table-wrap">
-<table>
+<table class="patient-utilization-table">
 <thead>
 <tr><th scope="col">Cohort</th><th scope="col">Patients Attempting</th><th scope="col">Patients Filling</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
 </tr>
@@ -259,7 +268,7 @@
 <h3>Percentage difference from supplied benchmark</h3>
 <p class="note">(Simulated − benchmark) / benchmark × 100. Scripts / Patient uses filling patients as the denominator. Hover over differences to inspect the actual and reference values. Differences are descriptive; the benchmark remains fixed for both patient types.</p>
 <div class="table-wrap">
-<table>
+<table class="patient-utilization-table">
 <thead>
 <tr><th scope="col">Cohort</th><th scope="col">Patients Attempting</th><th scope="col">Patients Filling</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
 </tr>
@@ -276,7 +285,7 @@
 <p id="patient-qc-matrix-flow" class="note">
 </p>
 <div class="table-wrap" tabindex="0" aria-label="Completed scripts by starting month">
-<table class="patient-qc-matrix">
+<table class="patient-qc-month-matrix">
 <thead>
 <tr><th scope="col">Starting month</th><th scope="col">Attempting</th><th scope="col">Filling</th><th scope="col">Max fills / patient</th><th scope="col">Jan</th><th scope="col">Feb</th><th scope="col">Mar</th><th scope="col">Apr</th><th scope="col">May</th><th scope="col">Jun</th><th scope="col">Jul</th><th scope="col">Aug</th><th scope="col">Sep</th><th scope="col">Oct</th><th scope="col">Nov</th><th scope="col">Dec</th><th scope="col">Scripts</th><th scope="col">Scripts / Patient</th>
 </tr>
