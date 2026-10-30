@@ -30,6 +30,26 @@ python3 scripts/import-oop-table.py /path/to/upload.txt --patient-type new
 
 For the Continuing table, use `--patient-type continuing`. The importer checks cohort labels, 12 percentage columns, duplicate rows, first-fill identity, column totals, and the cumulative distributions needed for nonincreasing OOP paths before writing data.
 
+## Shared website (GitHub Pages)
+
+The simulator is prepared for a public website at `https://mharrhayden.github.io/copay/`. The `gh-pages` branch contains only the public application files. A push to that branch does not itself enable GitHub Pages.
+
+One-time activation in [Repository Settings → Pages](https://github.com/mharrhayden/copay/settings/pages):
+
+1. Under **Build and deployment**, choose **Deploy from a branch**.
+2. Select **gh-pages**, folder **/ (root)**, and click **Save**.
+3. Wait for the Pages deployment to finish, then share the URL shown by GitHub.
+
+This is a public site. Patient generation and calculations run in each visitor's browser; there is no server, login, or shared patient storage. Selections and simulation results are local to the current browser page and reset on reload.
+
+For future updates, commit the source changes, then run:
+
+```sh
+npm run publish:pages
+```
+
+The command builds `_site`, publishes its runtime files with a regular Git push, and preserves the current checkout. The public build excludes tests, recovery notes, and development helpers. Subsequent pushes redeploy automatically after the one-time Pages setting is enabled. The hosted site serves ordinary HTML, CSS, and JavaScript modules over HTTPS and does not depend on a browser or file preview accepting the standalone HTML's embedded modules.
+
 ## Standalone HTML
 
 Open `exports/copay-simulator.html` in a modern browser. It embeds all application JavaScript, styling, and available source data and needs no server or internet connection. Use Download if a file preview does not execute JavaScript. Results and settings reset when the page reloads.

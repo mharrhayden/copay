@@ -5,10 +5,11 @@ from playwright.sync_api import sync_playwright
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--html', type=Path)
+parser.add_argument('--url', default='http://127.0.0.1:3000/')
 parser.add_argument('--screenshot-dir', type=Path)
 parser.add_argument('--patient-type', choices=['new', 'continuing'], default='new')
 args = parser.parse_args()
-url = args.html.resolve().as_uri() if args.html else 'http://127.0.0.1:3000/'
+url = args.html.resolve().as_uri() if args.html else args.url
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(executable_path='/usr/lib/chromium/chromium', headless=True, args=['--no-sandbox','--disable-dev-shm-usage'], timeout=15000)
     try:

@@ -5,7 +5,9 @@
   "scripts": {
     "start": "python3 -m http.server 3000 --bind 0.0.0.0",
     "test": "node scripts/run-tests.js",
-    "test:core": "node simulation.test.js"
+    "test:core": "node simulation.test.js",
+    "build:site": "python3 scripts/build-site.py",
+    "publish:pages": "python3 scripts/publish-pages.py"
   },
   "engines": {
     "node": ">=20"
