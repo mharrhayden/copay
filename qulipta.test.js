@@ -136,11 +136,30 @@ test('Qulipta batch totals reconcile and never use Ubrelvy comparison benchmarks
   assert.throws(()=>addPatientToRun(ubrelvy,patient),/product/);
 });
 
-test('missing Qulipta Continuing inputs remain unavailable and never borrow Ubrelvy tables', () => {
+test("Qulipta Continuing awaits only persistence and never borrows another patient type's curves", () => {
   assert.equal(hasPatientData('qulipta','new'),true);
   assert.equal(hasPatientData('qulipta','continuing'),false);
   assert.deepEqual(missingModelInputs('qulipta','new'),[]);
-  assert.throws(()=>getSubfillWeights('continuing','qulipta'),/not been supplied/);
+  assert.deepEqual(missingModelInputs('qulipta','continuing'),['Continuing persistence curves']);
+  assert.equal(getSubfillWeights('continuing','qulipta').B.A[1],4699);
   assert.throws(()=>getPersistenceCurve(get('A'),'continuing'),/not been supplied/);
   assert.throws(()=>generatePatient(1,policy,()=>0.5,()=>0.5,()=>0,'continuing','qulipta'),/not been supplied/);
+});
+
+
+test('Qulipta Continuing subfill table preserves all source marginals and never uses the New table', () => {
+  const continuing=getSubfillWeights('continuing','qulipta');
+  const newWeights=getSubfillWeights('new','qulipta');
+  assert.notEqual(continuing,newWeights);
+  assert.equal(Object.keys(continuing).length,16);
+  assert.equal(continuing.B.A[1],4699);
+  assert.equal(continuing.B.A[2],8650);
+  assert.equal(newWeights.B.A[1],3992);
+  assert.ok(Object.isFrozen(continuing));
+  for(const bracket of brackets){
+    const qc=runDistributionQc(bracket,10000,'continuing');
+    assert.equal(qc.increasingPaths,0,bracket.id);
+    assert.ok(qc.maxDifferencePp<=0.010000001,bracket.id);
+    assert.equal(qc.counts[0][bracket.id],10000);
+  }
 });
