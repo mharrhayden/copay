@@ -36,7 +36,7 @@ const upperBoundsCents = [0, 500, 1000, 1500, 2000, 2500, 5000, 10000, 20000, 30
 
 export function bracketForOop(oopCents, productId = DEFAULT_PRODUCT_ID) {
   const brackets = getBrackets(productId);
-  const bounds = productId === 'qulipta' ? [...upperBoundsCents.slice(0, 15), Infinity] : upperBoundsCents;
+  const bounds = productId === 'product-y' ? [...upperBoundsCents.slice(0, 15), Infinity] : upperBoundsCents;
   if (!Number.isSafeInteger(oopCents) || oopCents < 0) throw new RangeError('OOP must be nonnegative integer cents.');
   return brackets[bounds.findIndex(upper => oopCents <= upper)];
 }

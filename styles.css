@@ -181,8 +181,10 @@ footer { padding: 22px 4px 0; color: hsl(var(--theme-hue) 9.2% 55.1%); font-size
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
 }
 
-:root[data-product="qulipta"] { --theme-hue: 112; }
+:root[data-product="product-y"] { --theme-hue: 112; }
 .reference-field { display: flex; flex-direction: column; gap: 8px; }
 .reference-field > span { font-size: 12px; font-weight: 500; color: hsl(var(--theme-hue) 14% 37%); }
 .reference-field > strong { display: flex; align-items: center; height: 46px; padding: 10px 13px; border: 1px solid hsl(var(--theme-hue) 20% 84%); border-radius: 8px; background: hsl(var(--theme-hue) 23% 96%); color: var(--ink); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 #distribution-note { margin: 12px 0; }
+
+.demo-note { color: var(--muted); font-size: 11px; margin-top: 8px; }

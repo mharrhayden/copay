@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en" data-product="ubrelvy"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Copay · Patient &amp; eVoucher Simulator</title><link rel="stylesheet" href="styles.css"><script type="module" src="bootstrap.js"></script></head>
+<html lang="en" data-product="product-x"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Copay · Patient &amp; eVoucher Simulator</title><link rel="stylesheet" href="styles.css"><script type="module" src="bootstrap.js"></script></head>
 <body>
 <main>
 <header>
 <div>
 <p class="eyebrow">COPAY · PATIENT ECONOMICS</p>
 <h1>Patient &amp; eVoucher simulator</h1>
+<p class="demo-note">Illustrative simulation · synthetic product data</p>
 </div>
-<label for="product">Product<select id="product"><option value="ubrelvy">Ubrelvy</option><option value="qulipta">Qulipta</option></select>
+<label for="product">Product<select id="product"><option value="product-x">Product X</option><option value="product-y">Product Y</option></select>
 </label>
 </header>
 <section id="recovery-notice" class="recovery-notice" role="status" hidden>Patient simulation needs the OOP distribution table for the selected patient type.</section>
@@ -27,7 +28,7 @@
 </label>
 <label>Number of patients<input id="patient-count" type="number" min="1" max="300000" step="1" value="10000" required>
 </label>
-<div class="reference-field"><span>WAC per completed fill · fixed</span><strong id="revenue-wac">$1,393.68</strong></div>
+<div class="reference-field"><span>WAC per completed fill · fixed</span><strong id="revenue-wac">—</strong></div>
 </div>
 <div class="eligibility-bounds">
 <div class="bounds-title"><span>Eligible starting OOP cohorts</span><strong id="rev-bounds-summary"></strong>
@@ -99,7 +100,7 @@
 <article class="spend-card">
 <p class="eyebrow">PATIENT ECONOMICS</p>
 <h2>Annual revenue &amp; support</h2>
-<div class="reference-field"><span>WAC per completed fill · fixed</span><strong id="wac">$1,393.68</strong></div>
+<div class="reference-field"><span>WAC per completed fill · fixed</span><strong id="wac">—</strong></div>
 <dl>
 <div><dt>Gross revenue</dt><dd id="revenue">—</dd>
 </div>
@@ -264,7 +265,7 @@
 </tfoot>
 </table>
 </div>
-<h3>Percentage difference from supplied benchmark</h3>
+<h3>Percentage difference from illustrative benchmark</h3>
 <p id="patient-qc-benchmark-note" class="note"></p>
 <p class="note">(Simulated − benchmark) / benchmark × 100. Scripts / Patient uses filling patients as the denominator. Hover over differences to inspect the actual and reference values. Differences are descriptive; the benchmark remains fixed for both patient types.</p>
 <div class="table-wrap">
