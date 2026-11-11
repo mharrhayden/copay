@@ -10,8 +10,8 @@ IDS = list('ABCDEFGHIJKLM') + list('OPQR')
 RANGES = ['0', '0.01-5', '5.01-10', '10.01-15', '15.01-20', '20.01-25', '25.01-50', '50.01-100', '100.01-200', '200.01-300', '300.01-400', '400.01-500', '500.01-600', '600.01-800', '800.01-1000', '1000.01-1300', '1300+']
 BY_RANGE = dict(zip(RANGES, IDS))
 
-def cohort(label, product='ubrelvy'):
-    by_range = dict(zip(RANGES[:-2] + ['1000+'], IDS[:-1])) if product == 'qulipta' else BY_RANGE
+def cohort(label, product='product-x'):
+    by_range = dict(zip(RANGES[:-2] + ['1000+'], IDS[:-1])) if product == 'product-y' else BY_RANGE
     match = re.fullmatch(r'[A-Z]+\.\s*(.+)', label.strip())
     if not match:
         raise ValueError(f'Invalid cohort label: {label!r}')
@@ -20,8 +20,8 @@ def cohort(label, product='ubrelvy'):
         raise ValueError(f'Unknown OOP dollar range: {label!r}')
     return by_range[interval]
 
-def read_table(path, product='ubrelvy'):
-    ids = IDS[:-1] if product == 'qulipta' else IDS
+def read_table(path, product='product-x'):
+    ids = IDS[:-1] if product == 'product-y' else IDS
     data = {}
     original = None
     rows = 0
@@ -79,14 +79,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', type=Path)
     parser.add_argument('--patient-type', choices=['new', 'continuing'], required=True)
-    parser.add_argument('--product', choices=['ubrelvy', 'qulipta'], default='ubrelvy')
+    parser.add_argument('--product', choices=['product-x', 'product-y'], default='product-x')
     args = parser.parse_args()
     data, rows, minimum, maximum = read_table(args.source, args.product)
     root = Path(__file__).resolve().parent.parent
     name, export = ('subfill-data.js', 'subfillWeights') if args.patient_type == 'new' else ('continuing-subfill-data.js', 'continuingSubfillWeights')
-    if args.product == 'qulipta':
-        name = 'qulipta-' + name
-        export = 'quliptaSubfillWeights' if args.patient_type == 'new' else 'quliptaContinuingSubfillWeights'
+    if args.product == 'product-y':
+        name = 'product-y-' + name
+        export = 'productYSubfillWeights' if args.patient_type == 'new' else 'productYContinuingSubfillWeights'
     text = '// Supplied ' + args.patient_type + ' patient OOP table; labels mapped by dollar range.\n// Integer weights are hundredths of a percent; rounded columns normalize during sampling.\n'
     text += f'export const {export} = ' + json.dumps(data, indent=2) + ';\n'
     text += f'for (const destinations of Object.values({export})) {{\n  for (const weights of Object.values(destinations)) Object.freeze(weights);\n  Object.freeze(destinations);\n}}\nObject.freeze({export});\n'

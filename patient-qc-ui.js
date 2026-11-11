@@ -43,7 +43,7 @@ function appendRow(body, label, data, difference = false) {
 function renderTables(run = null) {
   const productId = run?.productId ?? selectedProductId();
   const data = run ? buildPatientQc(run) : null;
-  get('patient-qc-benchmark-note').textContent = productId === 'ubrelvy' ? 'Ubrelvy reference: 10,000 attempting patients, 9,023 filling patients, and 20,305 scripts. The reference stays fixed for New and Continuing.' : 'Qulipta reference benchmarks have not been supplied. Simulated results and the monthly matrix are available; reference differences are shown as a dash.';
+  get('patient-qc-benchmark-note').textContent = productId === 'product-x' ? 'Product X illustrative reference: synthetic benchmark values, held fixed for New and Continuing.' : 'Product Y has no illustrative reference benchmark. Simulated results and the monthly matrix are available; reference differences are shown as a dash.';
   for (const id of ['patient-qc-actual', 'patient-qc-difference', 'patient-qc-actual-total', 'patient-qc-difference-total']) get(id).replaceChildren();
   getBrackets(productId).forEach((bracket, index) => {
     const label = `${bracket.id}. ${bracket.label}`;

@@ -10,7 +10,7 @@ const money = cents => new Intl.NumberFormat('en-US', {
 const exactMoney = cents => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 const count = value => value.toLocaleString('en-US');
 
-export function renderRevenueTab(run, wacCents, productId = run?.productId ?? 'ubrelvy') {
+export function renderRevenueTab(run, wacCents, productId = run?.productId ?? 'product-x') {
   const brackets = getBrackets(productId);
   const heading = get('cohort-revenue-heading'); heading.replaceChildren();
   for (const label of ['Metric', ...brackets.map(bracket => `${bracket.id}. ${bracket.label}`), 'Total']) {

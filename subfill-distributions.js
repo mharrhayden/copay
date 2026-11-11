@@ -1,15 +1,15 @@
-import { quliptaContinuingSubfillWeights } from './qulipta-continuing-subfill-data.js';
-import { quliptaSubfillWeights } from './qulipta-subfill-data.js';
+import { productYContinuingSubfillWeights } from './product-y-continuing-subfill-data.js';
+import { productYSubfillWeights } from './product-y-subfill-data.js';
 import { subfillWeights } from './subfill-data.js';
 import { continuingSubfillWeights } from './continuing-subfill-data.js';
 
-export function getSubfillWeights(patientType = 'new', productId = 'ubrelvy') {
-  if (productId === 'qulipta') {
-    if (patientType === 'new') return quliptaSubfillWeights;
-    if (patientType === 'continuing') return quliptaContinuingSubfillWeights;
+export function getSubfillWeights(patientType = 'new', productId = 'product-x') {
+  if (productId === 'product-y') {
+    if (patientType === 'new') return productYSubfillWeights;
+    if (patientType === 'continuing') return productYContinuingSubfillWeights;
     throw new RangeError('Unknown subsequent-fill OOP distribution type.');
   }
-  if (productId !== 'ubrelvy') throw new RangeError('Unknown product.');
+  if (productId !== 'product-x') throw new RangeError('Unknown product.');
   if (patientType === 'new') {
     if (!Object.keys(subfillWeights).length) throw new Error('Missing New patient OOP table: restore subfill-data.js from the original Baseline Subfills Table.');
     return subfillWeights;

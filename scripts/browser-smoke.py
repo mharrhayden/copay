@@ -1,13 +1,15 @@
 """Verify the app in Chromium; optionally pass a standalone HTML path."""
 import argparse
 from pathlib import Path
+import json
+import subprocess
 from playwright.sync_api import sync_playwright
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--html', type=Path)
 parser.add_argument('--url', default='http://127.0.0.1:3000/')
 parser.add_argument('--screenshot-dir', type=Path)
-parser.add_argument('--product', choices=['ubrelvy', 'qulipta'], default='ubrelvy')
+parser.add_argument('--product', choices=['product-x', 'product-y'], default='product-x')
 parser.add_argument('--patient-type', choices=['new', 'continuing'], default='new')
 args = parser.parse_args()
 url = args.html.resolve().as_uri() if args.html else args.url
@@ -28,19 +30,20 @@ with sync_playwright() as playwright:
             page.goto(url, wait_until='networkidle', timeout=15000)
         page.wait_for_function("document.querySelectorAll('#distribution tr').length === 17 && !document.querySelector('#run-batch').disabled", timeout=10000)
         page.select_option('#product', args.product)
-        cohort_count = 16 if args.product == 'qulipta' else 17
-        wac = '$1,264.80' if args.product == 'qulipta' else '$1,393.68'
+        cohort_count = 16 if args.product == 'product-y' else 17
+        product = json.loads(subprocess.check_output(['node','--input-type=module','-e', f"import {{getProduct}} from './products.js'; console.log(JSON.stringify(getProduct('{args.product}')));"],cwd=Path(__file__).resolve().parent.parent,text=True))
+        wac = f"${product['wacCents'] / 100:,.2f}"
         assert page.locator('#distribution tr').count() == cohort_count
         assert page.locator('#cohort-revenue-heading th').count() == cohort_count + 2
         assert page.locator('#fill-months th').count() == 13
         assert page.locator('#patient-qc-actual tr').count() == cohort_count
         assert page.locator('#revenue-wac').inner_text() == wac
         assert page.locator('input#wac, input#revenue-wac').count() == 0
-        assert args.product.capitalize() in page.locator('#patient-qc-settings').inner_text()
+        assert product['name'] in page.locator('#patient-qc-settings').inner_text()
         assert not page.locator('#volume-type option[value=continuing]').evaluate('(option) => option.disabled')
         assert page.locator('#recovery-notice').is_hidden()
         assert page.locator('html').get_attribute('data-product') == args.product
-        assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--theme-hue').trim()") == ('112' if args.product == 'qulipta' else '210')
+        assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--theme-hue').trim()") == ('112' if args.product == 'product-y' else '210')
         page.select_option('#volume-type', args.patient_type)
         expected_type = 'Continuing' if args.patient_type == 'continuing' else 'New'
         page.locator('#simulation-tab').click()
@@ -111,10 +114,10 @@ with sync_playwright() as playwright:
         # context together. Returning restores the original product's results.
         original_results = page.locator('#cohort-revenue-body').inner_text()
         original_net = page.locator('#overview-net').inner_text()
-        other = 'qulipta' if args.product == 'ubrelvy' else 'ubrelvy'
+        other = 'product-y' if args.product == 'product-x' else 'product-x'
         page.select_option('#product', other)
         assert page.locator('html').get_attribute('data-product') == other
-        assert page.locator('#cohort-revenue-heading th').count() == (18 if other == 'qulipta' else 19)
+        assert page.locator('#cohort-revenue-heading th').count() == (18 if other == 'product-y' else 19)
         assert page.locator('#overview-patients').inner_text() == '—'
         assert page.locator('#wac').inner_text() != wac
         page.select_option('#product', args.product)

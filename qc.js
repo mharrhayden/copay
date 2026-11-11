@@ -1,7 +1,7 @@
 import { getBrackets, createSubfillSchedule } from './simulation.js';
 import { getSubfillWeights } from './subfill-distributions.js';
 
-export function distributionFor(original, fill, patientType = 'new', productId = original.productId ?? 'ubrelvy') {
+export function distributionFor(original, fill, patientType = 'new', productId = original.productId ?? 'product-x') {
   const brackets = getBrackets(productId);
   if (!Number.isInteger(fill) || fill < 1 || fill > 12) throw new RangeError('Invalid QC cohort or fill.');
   const subfillWeights = getSubfillWeights(patientType, productId);
@@ -17,7 +17,7 @@ export function distributionFor(original, fill, patientType = 'new', productId =
   });
 }
 
-export function runDistributionQc(original, sampleCount = 10000, patientType = 'new', productId = original.productId ?? 'ubrelvy') {
+export function runDistributionQc(original, sampleCount = 10000, patientType = 'new', productId = original.productId ?? 'product-x') {
   const brackets = getBrackets(productId);
   if (!Number.isSafeInteger(sampleCount) || sampleCount < 1) throw new RangeError('QC sample count must be positive.');
   const counts = Array.from({ length: 12 }, () => Object.fromEntries(brackets.map(bracket => [bracket.id, 0])));

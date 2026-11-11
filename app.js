@@ -34,7 +34,7 @@ function renderProductInfo() {
     body.append(row);
   }
   const sourceTotal = brackets.reduce((total, bracket) => total + bracket.weight, 0) / 10;
-  document.querySelector('#distribution-note').textContent = `${product.name} · ${brackets.length} starting cohorts. Supplied starting percentages total ${sourceTotal.toFixed(1)}%; sampling normalizes them to 100%. Displayed selection probabilities are normalized.`;
+  document.querySelector('#distribution-note').textContent = `${product.name} · ${brackets.length} starting cohorts. Illustrative starting percentages total ${sourceTotal.toFixed(1)}%; sampling normalizes them to 100%. Displayed selection probabilities are normalized.`;
   document.querySelector('#settings-note').textContent = `${product.name}: expanded benefit on fills 1–${product.expandedBenefitFills}, then up to ${money(product.standardBuydownCents)} per fill, within ${money(product.annualBuydownCapCents)} annual support. Eligibility applies to the next run.`;
 }
 renderProductInfo();
